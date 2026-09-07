@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 58
+local VERSION = 59
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -3051,7 +3051,11 @@ requestPathTreeRefresh = function(force, targetModel)
 			local forceNow = pathForceRefresh
 			pathRefreshQueued = false
 			pathForceRefresh = false
-			refreshPathTree(forceNow)
+			local ok, err = pcall(refreshPathTree, forceNow)
+			if not ok then
+				warn("[Violence District] Path refresh failed: " .. tostring(err))
+				break
+			end
 			task.wait()
 		end
 
@@ -3311,7 +3315,7 @@ function Logic.start()
 	Logic._watchProjectileCharacter(LP.Character)
 
 	trackConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then
+		if gameProcessed or UserInputService:GetFocusedTextBox() then
 			return
 		end
 

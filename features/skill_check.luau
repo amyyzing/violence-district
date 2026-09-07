@@ -11,6 +11,7 @@ return function(c)
 	local descendantRemovingConnection
 	local candidateConnections = {}
 	local previousRelativeRotation
+	local consumed = false
 	local inputFailureWarned = false
 	local scanForCheck
 
@@ -54,6 +55,12 @@ return function(c)
 		return line, goal
 	end
 
+	local function isVisible(check)
+		local prompt = check and check.Parent
+		return check and check.Visible and prompt and prompt.Parent == c.playerGui
+			and (not prompt:IsA("ScreenGui") or prompt.Enabled)
+	end
+
 	local function sendSpaceInput()
 		local ok, err = pcall(function()
 			c.virtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
@@ -86,7 +93,7 @@ return function(c)
 
 	local function startWatching()
 		stopWatching()
-		if not active or not c.getEnabled() or not boundCheck or not boundCheck.Visible then
+		if not active or consumed or not c.getEnabled() or not isVisible(boundCheck) then
 			return
 		end
 		if not lineGUI or lineGUI.Parent ~= boundCheck or not goalGUI or goalGUI.Parent ~= boundCheck then
@@ -94,7 +101,7 @@ return function(c)
 		end
 
 		steppedConnection = c.runService.Stepped:Connect(function()
-			if not active or not c.getEnabled() or not boundCheck or not boundCheck.Visible then
+			if not active or not c.getEnabled() or not isVisible(boundCheck) then
 				stopWatching()
 				return
 			end
@@ -108,9 +115,9 @@ return function(c)
 			previousRelativeRotation = relativeRotation
 			if trigger then
 				stopWatching()
-				if not sendSpaceInput() and boundCheck and boundCheck.Visible then
-					task.defer(startWatching)
-				end
+				-- One attempt per check, even if input is unavailable. Never spam retries.
+				consumed = true
+				sendSpaceInput()
 			end
 		end)
 	end
@@ -137,10 +144,12 @@ return function(c)
 
 		unbindCheck()
 		boundCheck = check
+		consumed = false
 		lineGUI = line
 		goalGUI = goal
 		goalConnection = goal:GetPropertyChangedSignal("Rotation"):Connect(function()
-			if check.Visible and c.getEnabled() then
+			consumed = false
+			if isVisible(check) and c.getEnabled() then
 				startWatching()
 			end
 		end)
@@ -162,18 +171,27 @@ return function(c)
 			return
 		end
 
-		candidateConnections[check] = check:GetPropertyChangedSignal("Visible"):Connect(function()
+		local visibleConnection = check:GetPropertyChangedSignal("Visible"):Connect(function()
 			if check.Visible then
 				bindCheck(check)
+				consumed = false
 				startWatching()
 			elseif boundCheck == check then
 				stopWatching()
 			end
 		end)
+		local list = { visibleConnection }
+		candidateConnections[check] = list
+		if check.Parent:IsA("ScreenGui") then
+			table.insert(list, check.Parent:GetPropertyChangedSignal("Enabled"):Connect(function()
+				scanForCheck()
+				startWatching()
+			end))
+		end
 	end
 
 	local function unregisterCheck(check)
-		disconnect(candidateConnections[check])
+		for _, connection in ipairs(candidateConnections[check] or {}) do disconnect(connection) end
 		candidateConnections[check] = nil
 	end
 
@@ -186,9 +204,9 @@ return function(c)
 		for promptName in pairs(PROMPT_NAMES) do
 			local prompt = c.playerGui:FindFirstChild(promptName)
 			local check = prompt and prompt:FindFirstChild("Check")
-			if check then
+			if check and resolveCheck(check) then
 				registerCheck(check)
-				if check.Visible then
+				if isVisible(check) then
 					visibleCheck = visibleCheck or check
 				end
 				fallback = fallback or check

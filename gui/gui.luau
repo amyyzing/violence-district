@@ -2,12 +2,11 @@ local LOGIC_KEY = "ViolenceDistrictLogic"
 local GUI_KEY = "ViolenceDistrictGui"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local LOGIC_VERSION = 58
+local LOGIC_VERSION = 59
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 
 local LP = Players.LocalPlayer
 local PG = LP:WaitForChild("PlayerGui")
@@ -18,7 +17,10 @@ local LOGIC_URL = baseUrl .. "features/logic.luau"
 
 local previousGui = globalState[GUI_KEY]
 local previousGuiState = previousGui and previousGui.getState and previousGui.getState()
-local existingGui = PG:FindFirstChild("CateyesGui")
+local existingGui = previousGui and previousGui.Gui or PG:FindFirstChild("CateyesGui")
+if not existingGui then
+	pcall(function() existingGui = game:GetService("CoreGui"):FindFirstChild("CateyesGui") end)
+end
 if not previousGuiState and existingGui then
 	local oldPanel = existingGui:FindFirstChild("Panel")
 	previousGuiState = { enabled = existingGui.Enabled, position = oldPanel and oldPanel.Position }
@@ -37,527 +39,224 @@ assert(Logic and Logic.Version == LOGIC_VERSION, "GUI and logic versions do not 
 if previousGui and previousGui.destroy then previousGui.destroy() end
 if existingGui and existingGui.Parent then existingGui:Destroy() end
 
-local connections = {}
-local sg
-local cursorState
+local sg, panel
 local destroyed = false
-local cursorBound = false
-local setDropdownOpen
-local cursorBinding = "ViolenceDistrictGuiCursor"
-local cameraCursorBinding = "ViolenceDistrictCameraCursor"
 
-local function captureCursorState()
-	cursorState = {
-		mouseBehavior = UserInputService.MouseBehavior,
-		mouseIconEnabled = UserInputService.MouseIconEnabled,
-	}
-end
-
-local function setCursorFree()
-	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-	UserInputService.MouseIconEnabled = true
-end
-
-local function applyCameraCursorState()
-	if cursorState then
-		UserInputService.MouseBehavior = cursorState.mouseBehavior
-		UserInputService.MouseIconEnabled = cursorState.mouseIconEnabled
-	end
-end
-
-local function restoreCursorState()
-	applyCameraCursorState()
-	cursorState = nil
-end
-
-local function syncCursorToGui()
-	if not destroyed and sg and sg.Parent and sg.Enabled then
-		if not cursorBound then
-			cursorBound = true
-			captureCursorState()
-			-- Let the camera update its own state before applying the UI-only override.
-			RunService:BindToRenderStep(cameraCursorBinding, Enum.RenderPriority.First.Value, applyCameraCursorState)
-			RunService:BindToRenderStep(cursorBinding, Enum.RenderPriority.Last.Value, function()
-				captureCursorState()
-				setCursorFree()
-			end)
-		end
-		setCursorFree()
-	else
-		if cursorBound then
-			RunService:UnbindFromRenderStep(cursorBinding)
-			RunService:UnbindFromRenderStep(cameraCursorBinding)
-			cursorBound = false
-		end
-		restoreCursorState()
-		if setDropdownOpen and not destroyed then setDropdownOpen(false) end
-	end
-end
-
+local connections, tweens = {}, {}
+local drag
+local C = {
+	panel = Color3.fromRGB(23, 25, 31), surface = Color3.fromRGB(32, 35, 43),
+	hover = Color3.fromRGB(39, 42, 51), line = Color3.fromRGB(49, 53, 63),
+	text = Color3.fromRGB(237, 238, 243), muted = Color3.fromRGB(148, 154, 171),
+	accent = Color3.fromRGB(184, 172, 249),
+}
 local function connect(signal, callback)
 	local connection = signal:Connect(callback)
 	table.insert(connections, connection)
 	return connection
 end
-
-local function make(className, props)
-	local obj = Instance.new(className)
-	for key, value in pairs(props) do
-		obj[key] = value
-	end
-	return obj
+local function make(class, name, parent, props)
+	local object = Instance.new(class)
+	object.Name = name
+	if object:IsA("GuiObject") then object.BorderSizePixel = 0 end
+	for key, value in pairs(props or {}) do object[key] = value end
+	object.Parent = parent
+	return object
 end
-
-local function addCorner(parent, radius)
-	return make("UICorner", {
-		CornerRadius = UDim.new(0, radius or 8),
-		Parent = parent,
+local function label(parent, name, value, x, y, w, h, size, color, font)
+	return make("TextLabel", name, parent, {
+		Text = value, Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, h),
+		BackgroundTransparency = 1, TextColor3 = color or C.text, TextSize = size or 13,
+		Font = font or Enum.Font.Gotham, TextXAlignment = Enum.TextXAlignment.Left,
 	})
 end
-
-local function addStroke(parent, color, transparency)
-	return make("UIStroke", {
-		Color = color,
-		Thickness = 1,
-		Transparency = transparency or 0,
-		Parent = parent,
+local function button(parent, name, value, x, y, w, h, color)
+	return make("TextButton", name, parent, {
+		Text = value, Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, h),
+		BackgroundColor3 = color or C.surface, TextColor3 = C.text, TextSize = 12,
+		Font = Enum.Font.GothamMedium, AutoButtonColor = false,
 	})
 end
+local function corner(object, radius)
+	make("UICorner", "Corner", object, { CornerRadius = UDim.new(0, radius) })
+end
+local function tween(object, props)
+	if tweens[object] then tweens[object]:Cancel() end
+	local animation = TweenService:Create(object, TweenInfo.new(0.14, Enum.EasingStyle.Quad), props)
+	tweens[object] = animation
+	animation:Play()
+end
 
-local colors = {
-	panel = Color3.fromRGB(19, 20, 23),
-	panelStroke = Color3.fromRGB(65, 70, 78),
-	surface = Color3.fromRGB(29, 32, 36),
-	surfaceHover = Color3.fromRGB(37, 41, 46),
-	surfaceStroke = Color3.fromRGB(55, 60, 68),
-	text = Color3.fromRGB(242, 244, 247),
-	muted = Color3.fromRGB(150, 157, 166),
-	on = Color3.fromRGB(46, 184, 116),
-	off = Color3.fromRGB(78, 83, 91),
-	accent = Color3.fromRGB(94, 166, 255),
-	accentHover = Color3.fromRGB(126, 188, 255),
-}
-
-local dropdownTweenInfo = TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local dropdownOpenSize = UDim2.new(1, -32, 0, 66)
-local dropdownClosedSize = UDim2.new(1, -32, 0, 0)
-
-sg = make("ScreenGui", {
-	Name = "CateyesGui",
-	ResetOnSpawn = false,
+sg = make("ScreenGui", "CateyesGui", nil, {
+	ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 2147483647,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-	Enabled = not previousGuiState or previousGuiState.enabled ~= false,
-	Parent = PG,
 })
-
-local panel = make("Frame", {
-	Name = "Panel",
-	Size = UDim2.new(0, 286, 0, 326),
-	Position = previousGuiState and previousGuiState.position or UDim2.new(0, 48, 0, 48),
-	BackgroundColor3 = colors.panel,
-	BackgroundTransparency = 0.02,
-	BorderSizePixel = 0,
-	Parent = sg,
-})
-addCorner(panel, 8)
-addStroke(panel, colors.panelStroke, 0.18)
-
-local title = make("TextButton", {
-	Name = "Title",
-	Size = UDim2.new(1, -72, 0, 26),
-	Position = UDim2.new(0, 16, 0, 14),
-	BackgroundTransparency = 1,
-	Text = "Cateyes",
-	TextColor3 = colors.text,
-	Font = Enum.Font.GothamBold,
-	TextSize = 18,
-	TextXAlignment = Enum.TextXAlignment.Left,
-	Parent = panel,
-})
-
-local closeButton = make("TextButton", {
-	Name = "Close", Text = "X", TextSize = 14, Font = Enum.Font.GothamMedium,
-	TextColor3 = colors.muted, BackgroundTransparency = 1,
-	Size = UDim2.fromOffset(32, 32), Position = UDim2.new(1, -40, 0, 10),
-	Parent = panel,
-})
-connect(closeButton.Activated, function() sg.Enabled = false end)
-connect(closeButton.MouseEnter, function() closeButton.TextColor3 = colors.text end)
-connect(closeButton.MouseLeave, function() closeButton.TextColor3 = colors.muted end)
-
-local function clampPanel()
-	if destroyed then return end
-	local size = sg.AbsoluteSize
-	local x = panel.Position.X.Scale * size.X + panel.Position.X.Offset
-	local y = panel.Position.Y.Scale * size.Y + panel.Position.Y.Offset
-	panel.Position = UDim2.fromOffset(
-		math.clamp(x, 0, math.max(0, size.X - panel.AbsoluteSize.X)),
-		math.clamp(y, 0, math.max(0, size.Y - panel.AbsoluteSize.Y))
-	)
+-- CoreGui gives DisplayOrder priority over the game's PlayerGui layer.
+local mounted = pcall(function() sg.Parent = game:GetService("CoreGui") end)
+if not mounted and type(gethui) == "function" then
+	mounted = pcall(function() sg.Parent = assert(gethui(), "UI container unavailable") end)
 end
-local dragInput, dragStart, dragPosition
-connect(title.InputBegan, function(input)
+if not mounted then sg.Parent = PG end
+panel = make("Frame", "Panel", sg, {
+	Size = UDim2.fromOffset(348, 376), BackgroundColor3 = C.panel,
+	Position = previousGuiState and previousGuiState.position or UDim2.fromOffset(48, 80),
+	Visible = not previousGuiState or previousGuiState.enabled ~= false,
+})
+corner(panel, 14)
+make("UIStroke", "Outline", panel, { Color = C.line, Thickness = 1 })
+local scale = make("UIScale", "Scale", panel, { Scale = 1 })
+local reopen = button(sg, "Reopen", "CE", 12, 180, 44, 44, C.panel)
+reopen.TextColor3 = C.accent
+corner(reopen, 14)
+make("UIStroke", "Outline", reopen, { Color = C.line, Thickness = 1 })
+reopen.Visible = not panel.Visible
+
+local header = button(panel, "Title", "", 20, 14, 258, 56, C.panel)
+label(header, "Brand", "Cateyes", 0, 0, 220, 28, 23, C.text, Enum.Font.GothamBold)
+label(header, "Subtitle", "Violence District", 0, 31, 220, 18, 12, C.muted)
+local close = button(panel, "Close", "-", 296, 20, 32, 32, C.surface)
+close.TextSize = 20
+close.TextColor3 = C.muted
+corner(close, 9)
+make("Frame", "Divider", panel, { Position = UDim2.fromOffset(20, 80), Size = UDim2.fromOffset(308, 1), BackgroundColor3 = C.line })
+
+local group = make("Frame", "Features", panel, {
+	Position = UDim2.fromOffset(20, 96), Size = UDim2.fromOffset(308, 184), BackgroundColor3 = C.surface,
+})
+corner(group, 10)
+local channels = {
+	{ id = "Highlights", title = "Highlights", hotkey = "Y", key = "highlightsEnabled", set = Logic.setHighlightsEnabled },
+	{ id = "SkillCheck", title = "Skill check", hotkey = "G", key = "skillCheckEnabled", set = Logic.setSkillCheckEnabled },
+	{ id = "PathTree", title = "Generator paths", hotkey = "F", key = "pathTreeEnabled", set = Logic.setPathTreeEnabled },
+	{ id = "Projectile", title = "Projectile preview", hotkey = "H", key = "projectileVisualiserEnabled", set = Logic.setProjectileVisualiserEnabled },
+}
+for index, channel in ipairs(channels) do
+	local row = button(group, channel.id .. "Row", "", 0, (index - 1) * 46, 308, 46)
+	corner(row, 10)
+	label(row, "Label", channel.title, 14, 0, 174, 46, 13, C.text, Enum.Font.GothamMedium)
+	local key = label(row, "Hotkey", channel.hotkey, 190, 0, 20, 46, 11, C.muted)
+	key.TextXAlignment = Enum.TextXAlignment.Center
+	channel.status = label(row, "State", "Off", 226, 0, 32, 46, 11, C.muted)
+	local mark = make("Frame", "Mark", row, {
+		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(280, 23),
+		Size = UDim2.fromOffset(12, 12), BackgroundColor3 = C.line,
+	})
+	corner(mark, 3)
+	channel.mark = mark
+	connect(row.Activated, function() channel.set(not Logic.getState()[channel.key]) end)
+	connect(row.MouseEnter, function() tween(row, { BackgroundColor3 = C.hover }) end)
+	connect(row.MouseLeave, function() tween(row, { BackgroundColor3 = C.surface }) end)
+	if index < #channels then
+		make("Frame", "Divider" .. index, group, {
+			Position = UDim2.fromOffset(14, index * 46 - 1), Size = UDim2.fromOffset(280, 1), BackgroundColor3 = C.line,
+			ZIndex = 2,
+		})
+	end
+end
+
+label(panel, "ModeLabel", "Skill mode", 20, 295, 110, 32, 12, C.muted)
+local modeGroup = make("Frame", "Mode", panel, {
+	Position = UDim2.fromOffset(152, 294), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
+})
+corner(modeGroup, 9)
+local modeButtons = {}
+for index, mode in ipairs({ "Normal", "Perfect" }) do
+	local option = button(modeGroup, mode, mode, 3 + (index - 1) * 85, 3, 85, 28)
+	corner(option, 7)
+	modeButtons[mode] = option
+	connect(option.Activated, function() Logic.setSkillCheckMode(mode) end)
+end
+local count = label(panel, "Status", "All off", 20, 345, 128, 16, 11, C.muted)
+local hint = label(panel, "Hint", "Right Ctrl to hide", 170, 345, 158, 16, 11, C.muted)
+hint.TextXAlignment = Enum.TextXAlignment.Right
+
+local function render(state)
+	local enabled = 0
+	for _, channel in ipairs(channels) do
+		local on = state[channel.key] == true
+		enabled = enabled + (on and 1 or 0)
+		channel.status.Text = on and "On" or "Off"
+		channel.status.TextColor3 = on and C.accent or C.muted
+		tween(channel.mark, { Rotation = on and 45 or 0, BackgroundColor3 = on and C.accent or C.line })
+	end
+	for mode, option in pairs(modeButtons) do
+		local selected = state.skillCheckMode == mode
+		option.BackgroundColor3 = selected and C.accent or C.surface
+		option.TextColor3 = selected and C.panel or C.muted
+	end
+	count.Text = enabled == 0 and "All off" or string.format("%d enabled", enabled)
+end
+local function fitPanel()
+	if destroyed then return end
+	local viewport = sg.AbsoluteSize
+	if viewport.X <= 0 or viewport.Y <= 0 then return end
+	local inset = game:GetService("GuiService"):GetGuiInset()
+	scale.Scale = math.min(1, math.max(1, viewport.X - 16) / 348, math.max(1, viewport.Y - inset.Y - 16) / 376)
+	local x = panel.Position.X.Scale * viewport.X + panel.Position.X.Offset
+	local y = panel.Position.Y.Scale * viewport.Y + panel.Position.Y.Offset
+	panel.Position = UDim2.fromOffset(math.clamp(x, 8, math.max(8, viewport.X - 348 * scale.Scale - 8)),
+		math.clamp(y, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 376 * scale.Scale - 8)))
+	reopen.Position = UDim2.fromOffset(12, math.clamp(180, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 52)))
+end
+-- Modal only releases the pointer while this panel is visible.
+-- Never write MouseBehavior/MouseIconEnabled or restore a saved camera state.
+local function syncVisibility()
+	header.Modal = not destroyed and sg.Enabled and panel.Visible
+	reopen.Visible = not panel.Visible
+end
+local function setVisible(visible)
+	drag = nil
+	panel.Visible = visible
+	reopen.Visible = not visible
+	fitPanel()
+	syncVisibility()
+end
+connect(header.InputBegan, function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput, dragStart, dragPosition = input, input.Position, panel.Position
+		drag = { input = input, start = input.Position, position = panel.Position }
 	end
 end)
 connect(UserInputService.InputChanged, function(input)
-	if not dragInput or not sg.Enabled then return end
-	if input == dragInput or input.UserInputType == Enum.UserInputType.MouseMovement then
-		local delta = input.Position - dragStart
-		panel.Position = dragPosition + UDim2.fromOffset(delta.X, delta.Y)
-		clampPanel()
-	end
+	if not drag or not panel.Visible then return end
+	local mouseMove = drag.input.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement
+	if input ~= drag.input and not mouseMove then return end
+	local delta = input.Position - drag.start
+	panel.Position = drag.position + UDim2.fromOffset(delta.X, delta.Y)
+	fitPanel()
 end)
-connect(UserInputService.InputEnded, function(input)
-	if input == dragInput then dragInput = nil end
-end)
-connect(sg:GetPropertyChangedSignal("AbsoluteSize"), clampPanel)
-connect(panel:GetPropertyChangedSignal("AbsoluteSize"), clampPanel)
-task.defer(clampPanel)
-
-local statusText = make("TextLabel", {
-	Name = "Status",
-	Size = UDim2.new(1, -32, 0, 18),
-	Position = UDim2.new(0, 16, 0, 38),
-	BackgroundTransparency = 1,
-	Text = "Highlights off",
-	TextColor3 = colors.muted,
-	Font = Enum.Font.Gotham,
-	TextSize = 12,
-	TextXAlignment = Enum.TextXAlignment.Left,
-	Parent = panel,
-})
-
-local togglePills = {}
-
-local function makeToggleRow(name, y, onClick)
-	local row = make("TextButton", {
-		Name = name .. "Row",
-		Size = UDim2.new(1, -32, 0, 42),
-		Position = UDim2.new(0, 16, 0, y),
-		BackgroundColor3 = colors.surface,
-		BorderSizePixel = 0,
-		AutoButtonColor = false,
-		Text = "",
-		Parent = panel,
-	})
-	addCorner(row, 8)
-	addStroke(row, colors.surfaceStroke, 0.35)
-
-	make("TextLabel", {
-		Name = "Label",
-		Size = UDim2.new(1, -86, 1, 0),
-		Position = UDim2.new(0, 12, 0, 0),
-		BackgroundTransparency = 1,
-		Text = name,
-		TextColor3 = colors.text,
-		Font = Enum.Font.GothamMedium,
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Parent = row,
-	})
-
-	local pill = make("TextLabel", {
-		Name = "State",
-		Size = UDim2.new(0, 56, 0, 24),
-		Position = UDim2.new(1, -68, 0.5, -12),
-		BackgroundColor3 = colors.off,
-		BorderSizePixel = 0,
-		Text = "OFF",
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		Font = Enum.Font.GothamBold,
-		TextSize = 12,
-		Parent = row,
-	})
-	addCorner(pill, 12)
-
-	connect(row.MouseEnter, function()
-		row.BackgroundColor3 = colors.surfaceHover
-	end)
-
-	connect(row.MouseLeave, function()
-		row.BackgroundColor3 = colors.surface
-	end)
-
-	connect(row.Activated, onClick)
-	togglePills[name] = pill
-end
-
-makeToggleRow("Highlights", 68, function()
-	Logic.toggleHighlights()
-end)
-
-makeToggleRow("Skill Check", 118, function()
-	Logic.toggleSkillCheck()
-end)
-
-makeToggleRow("Path Tree", 168, function()
-	Logic.togglePathTree()
-end)
-
-makeToggleRow("Projectile Visualiser", 218, function()
-	Logic.toggleProjectileVisualiser()
-end)
-
-local modeRow = make("Frame", {
-	Name = "ModeRow",
-	Size = UDim2.new(1, -32, 0, 42),
-	Position = UDim2.new(0, 16, 0, 268),
-	BackgroundColor3 = colors.surface,
-	BorderSizePixel = 0,
-	Parent = panel,
-})
-addCorner(modeRow, 8)
-addStroke(modeRow, colors.surfaceStroke, 0.35)
-
-make("TextLabel", {
-	Name = "ModeLabel",
-	Size = UDim2.new(1, -132, 1, 0),
-	Position = UDim2.new(0, 12, 0, 0),
-	BackgroundTransparency = 1,
-	Text = "Skill Mode",
-	TextColor3 = colors.text,
-	Font = Enum.Font.GothamMedium,
-	TextSize = 14,
-	TextXAlignment = Enum.TextXAlignment.Left,
-	Parent = modeRow,
-})
-
-local modeButton = make("TextButton", {
-	Name = "ModeButton",
-	Size = UDim2.new(0, 112, 0, 28),
-	Position = UDim2.new(1, -124, 0.5, -14),
-	BackgroundColor3 = Color3.fromRGB(41, 45, 51),
-	BorderSizePixel = 0,
-	AutoButtonColor = false,
-	Text = "Perfect  v",
-	TextColor3 = colors.text,
-	Font = Enum.Font.GothamMedium,
-	TextSize = 13,
-	Parent = modeRow,
-})
-addCorner(modeButton, 6)
-
-local options = make("Frame", {
-	Name = "ModeOptions",
-	Size = dropdownClosedSize,
-	Position = UDim2.new(0, 16, 0, 314),
-	BackgroundColor3 = colors.surface,
-	BackgroundTransparency = 1,
-	BorderSizePixel = 0,
-	ClipsDescendants = true,
-	Visible = false,
-	ZIndex = 5,
-	Parent = panel,
-})
-addCorner(options, 8)
-local optionsStroke = addStroke(options, colors.surfaceStroke, 1)
-
-local dropdownOpen = false
-local dropdownTween
-local strokeTween
-local panelTween
-local dropdownCompletedConnection
-local modeButtons = {}
-local modeButtonHovers = {}
-local currentSkillMode = Logic.getState().skillCheckMode
-
-setDropdownOpen = function(open)
-	dropdownOpen = open
-	if dropdownCompletedConnection then
-		dropdownCompletedConnection:Disconnect()
-		dropdownCompletedConnection = nil
-	end
-
-	if dropdownTween then
-		dropdownTween:Cancel()
-		dropdownTween = nil
-	end
-
-	if strokeTween then strokeTween:Cancel() end
-	if panelTween then panelTween:Cancel() end
-	if open then
-		options.Visible = true
-	end
-
-	dropdownTween = TweenService:Create(options, dropdownTweenInfo, {
-		Size = open and dropdownOpenSize or dropdownClosedSize,
-		BackgroundTransparency = open and 0 or 1,
-	})
-	strokeTween = TweenService:Create(optionsStroke, dropdownTweenInfo, {
-		Transparency = open and 0.25 or 1,
-	})
-	dropdownTween:Play()
-	strokeTween:Play()
-	panelTween = TweenService:Create(panel, dropdownTweenInfo, {
-		Size = UDim2.fromOffset(286, open and 396 or 326),
-	})
-	panelTween:Play()
-	dropdownCompletedConnection = dropdownTween.Completed:Connect(function(playbackState)
-		if playbackState == Enum.PlaybackState.Completed and not dropdownOpen then
-			options.Visible = false
-		end
-		if dropdownCompletedConnection then
-			dropdownCompletedConnection:Disconnect()
-			dropdownCompletedConnection = nil
-		end
-	end)
-
-	modeButton.Text = modeButton.Text:gsub("[%^v]$", open and "^" or "v")
-end
-
-local function renderModeOption(mode)
-	local button = modeButtons[mode]
-	if not button then
-		return
-	end
-
-	local selected = currentSkillMode == mode
-	local hovering = modeButtonHovers[mode] == true
-	button.BackgroundColor3 = selected and (hovering and colors.accentHover or colors.accent) or (hovering and colors.surfaceHover or colors.surface)
-	button.TextColor3 = selected and Color3.fromRGB(12, 18, 24) or colors.text
-end
-
-local function makeModeOption(mode, y)
-	local button = make("TextButton", {
-		Name = mode .. "Option",
-		Size = UDim2.new(1, -8, 0, 28),
-		Position = UDim2.new(0, 4, 0, y),
-		BackgroundColor3 = colors.surface,
-		BorderSizePixel = 0,
-		AutoButtonColor = false,
-		Text = mode,
-		TextColor3 = colors.text,
-		Font = Enum.Font.GothamMedium,
-		TextSize = 13,
-		ZIndex = 6,
-		Parent = options,
-	})
-	addCorner(button, 6)
-
-	connect(button.Activated, function()
-		Logic.setSkillCheckMode(mode)
-		setDropdownOpen(false)
-	end)
-
-	modeButtons[mode] = button
-	connect(button.MouseEnter, function()
-		modeButtonHovers[mode] = true
-		renderModeOption(mode)
-	end)
-
-	connect(button.MouseLeave, function()
-		modeButtonHovers[mode] = false
-		renderModeOption(mode)
-	end)
-end
-
-makeModeOption("Normal", 4)
-makeModeOption("Perfect", 34)
-
-connect(modeButton.Activated, function()
-	setDropdownOpen(not dropdownOpen)
-end)
-
-connect(modeButton.MouseEnter, function()
-	modeButton.BackgroundColor3 = colors.surfaceHover
-end)
-
-connect(modeButton.MouseLeave, function()
-	modeButton.BackgroundColor3 = Color3.fromRGB(41, 45, 51)
-end)
-
-local function setToggleVisual(name, on)
-	local pill = togglePills[name]
-	if not pill then
-		return
-	end
-
-	pill.Text = on and "ON" or "OFF"
-	pill.BackgroundColor3 = on and colors.on or colors.off
-end
-
-local function render(state)
-	setToggleVisual("Highlights", state.highlightsEnabled)
-	setToggleVisual("Skill Check", state.skillCheckEnabled)
-	setToggleVisual("Path Tree", state.pathTreeEnabled)
-	setToggleVisual("Projectile Visualiser", state.projectileVisualiserEnabled)
-
-	currentSkillMode = state.skillCheckMode
-	modeButton.Text = string.format("%s  %s", state.skillCheckMode, dropdownOpen and "^" or "v")
-	for mode in pairs(modeButtons) do
-		renderModeOption(mode)
-	end
-
-	local enabled = {}
-	if state.highlightsEnabled then
-		table.insert(enabled, "ESP")
-	end
-	if state.pathTreeEnabled then
-		table.insert(enabled, "Paths")
-	end
-	if state.skillCheckEnabled then
-		table.insert(enabled, "Skill")
-	end
-	if state.projectileVisualiserEnabled then
-		table.insert(enabled, "Proj")
-	end
-
-	if #enabled > 0 then
-		statusText.Text = table.concat(enabled, " + ") .. " on"
-	else
-		statusText.Text = "All off"
-	end
-end
-
+connect(UserInputService.InputEnded, function(input) if drag and input == drag.input then drag = nil end end)
+connect(UserInputService.WindowFocusReleased, function() drag = nil end)
+connect(close.Activated, function() setVisible(false) end)
+connect(reopen.Activated, function() setVisible(true) end)
 connect(Logic.Changed, render)
-connect(sg:GetPropertyChangedSignal("Enabled"), syncCursorToGui)
-connect(UserInputService.InputBegan, function(input, gameProcessed)
-	if dropdownOpen and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-		local inside = false
-		for _, object in ipairs(PG:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)) do
-			if object == modeButton or object == options or object:IsDescendantOf(options) then inside = true break end
-		end
-		if not inside then setDropdownOpen(false) end
-	end
-	if gameProcessed or input.UserInputType ~= Enum.UserInputType.Keyboard then
-		return
-	end
-
-	if input.KeyCode == Enum.KeyCode.RightControl then
-		sg.Enabled = not sg.Enabled
-		syncCursorToGui()
+connect(sg:GetPropertyChangedSignal("Enabled"), syncVisibility)
+connect(panel:GetPropertyChangedSignal("Visible"), syncVisibility)
+connect(sg:GetPropertyChangedSignal("AbsoluteSize"), fitPanel)
+connect(UserInputService.InputBegan, function(input, processed)
+	if not processed and not UserInputService:GetFocusedTextBox() and input.KeyCode == Enum.KeyCode.RightControl then
+		setVisible(not panel.Visible)
 	end
 end)
-
-local controller = {}
+local controller = { Gui = sg }
 function controller.getState()
-	return { enabled = sg.Enabled, position = panel.Position }
+	return { enabled = panel.Visible, position = panel.Position }
 end
 function controller.destroy()
 	if destroyed then return end
 	destroyed = true
-	syncCursorToGui()
-	if dropdownCompletedConnection then
-		dropdownCompletedConnection:Disconnect()
-		dropdownCompletedConnection = nil
-	end
-	for _, connection in ipairs(connections) do
-		connection:Disconnect()
-	end
+	drag = nil
+	syncVisibility()
+	for _, connection in ipairs(connections) do connection:Disconnect() end
+	for _, animation in pairs(tweens) do animation:Cancel() end
 	table.clear(connections)
-	if dropdownTween then dropdownTween:Cancel() end
-	if strokeTween then strokeTween:Cancel() end
-	if panelTween then panelTween:Cancel() end
-	if sg then sg:Destroy() end
+	table.clear(tweens)
+	sg:Destroy()
 	if globalState[GUI_KEY] == controller then globalState[GUI_KEY] = nil end
 end
 globalState[GUI_KEY] = controller
 connect(sg.Destroying, controller.destroy)
-
 Logic.start()
 render(Logic.getState())
-syncCursorToGui()
-
-return globalState[GUI_KEY]
+task.defer(fitPanel)
+syncVisibility()
+return controller
