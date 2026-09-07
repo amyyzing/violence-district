@@ -42,6 +42,17 @@ build lets you run local changes before publishing a release.
 - `scripts/test_visual_features.luau` returns a test function requiring a loaded
   map. It checks owned fixtures, live path construction, cleanup, and recovery
   from one deliberately injected path error, then restores the switches.
+- `scripts/test_projectile_aim.luau` checks recorded launch directions, gravity,
+  frame timing, charge range, collisions, camera-spear attachment, and cleanup
+  using isolated fixtures. It does not send throws.
+
+The spear preview restores the earlier curved trajectory. It keeps the game's
+release offset for collision prediction and uses the camera spear's Hitbox as
+the visible line start when available. Four live throws confirmed half gravity
+and the full/mid speeds of 165/142.5 studs per second. Direction follows the
+camera, matching the game's `Lookvectorgiver`, rather than converging on nearby
+geometry. The game sends that direction every 0.1 seconds, so quick turns,
+latency, future target movement, and changes in frame timing can affect accuracy.
 
 These checks cover local behavior; actual skill-input delivery and projectile
 accuracy also depend on the executor and the current game mechanics.

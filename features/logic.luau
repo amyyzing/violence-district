@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 59
+local VERSION = 62
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -147,7 +147,9 @@ local K = {
 	PROJECTILE_MID_SPEED = 142.5,
 	PROJECTILE_CHARGE_SPEED = 150,
 	PROJECTILE_FULL_CHARGE_TIME = 2,
-	PROJECTILE_BEAM_DISTANCE = 1000,
+	PROJECTILE_GRAVITY_MULTIPLIER = 0.5,
+	PROJECTILE_FLIGHT_TIME = 4,
+	PROJECTILE_ARC_STEPS = 40,
 	PROJECTILE_BEAM_THICKNESS = 3,
 	PROJECTILE_BEAM_ZINDEX = 8,
 	PROJECTILE_IMPACT_RADIUS = 0.7,
@@ -217,6 +219,7 @@ local projectilePreviewFolder
 local projectilePowerGui
 local projectilePowerLabel
 local projectileBeamAdornment
+local projectileArcBeams = {}
 local projectileImpactAdornment
 local projectileHeartbeatConnection
 local projectileThrowHolding = false
@@ -842,6 +845,8 @@ local function hideProjectilePowerGui()
 end
 
 local function clearProjectilePreview()
+	for _, beam in ipairs(projectileArcBeams) do beam:Destroy() end
+	table.clear(projectileArcBeams)
 	if projectileBeamAdornment then
 		projectileBeamAdornment:Destroy()
 		projectileBeamAdornment = nil
@@ -911,20 +916,20 @@ end
 
 local function projectilePowerState()
 	if not projectileThrowHolding or projectileHoldStartClock <= 0 then
-		return "READY", 1, Color3.fromRGB(255, 232, 119)
+		return "READY", 1, Color3.fromRGB(255, 232, 119), K.PROJECTILE_SPEED
 	end
 
 	local held = os.clock() - projectileHoldStartClock
 	if held >= K.PROJECTILE_FULL_CHARGE_TIME then
-		return "FULL", 1, Color3.fromRGB(255, 121, 73)
+		return "FULL", 1, Color3.fromRGB(255, 121, 73), K.PROJECTILE_SPEED
 	end
 
 	if held >= 1 then
-		return "MID", K.PROJECTILE_MID_SPEED / K.PROJECTILE_SPEED, Color3.fromRGB(255, 178, 82)
+		return "MID", K.PROJECTILE_MID_SPEED / K.PROJECTILE_SPEED, Color3.fromRGB(255, 178, 82), K.PROJECTILE_MID_SPEED
 	end
 
 	local speed = math.max(held * K.PROJECTILE_CHARGE_SPEED, 1)
-	return "LOW", math.clamp(speed / K.PROJECTILE_SPEED, 0, 1), Color3.fromRGB(126, 226, 255)
+	return "LOW", math.clamp(speed / K.PROJECTILE_SPEED, 0, 1), Color3.fromRGB(126, 226, 255), speed
 end
 
 local function updateProjectilePowerIndicator(label, percent, color)
@@ -938,7 +943,7 @@ local function updateProjectilePowerIndicator(label, percent, color)
 	powerLabel.TextColor3 = color
 end
 
-local function projectileStartPosition(character)
+function Logic._projectileStartPosition(character)
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if root and root:IsA("BasePart") then
 		return root.Position + root.CFrame.LookVector * K.PROJECTILE_START_FORWARD + Vector3.new(0, K.PROJECTILE_START_UP, 0)
@@ -948,8 +953,9 @@ local function projectileStartPosition(character)
 	return camera and camera.CFrame.Position or nil
 end
 
-local function projectileRaycastParams(character)
+function Logic._projectileRaycastParams(character)
 	local ignore = {}
+	if workspace.CurrentCamera then table.insert(ignore, workspace.CurrentCamera) end
 	if projectilePreviewFolder then
 		table.insert(ignore, projectilePreviewFolder)
 	end
@@ -1107,6 +1113,50 @@ function Logic._setProjectileBeam(fromPosition, toPosition, color)
 	beam.Transparency = 0.12
 end
 
+function Logic._projectileVisualOrigin(camera, fallback)
+	-- The first-person spear is cosmetic; it must not move the physics origin.
+	local spear = camera and camera:FindFirstChild("Spear", true)
+	local hitbox = spear and spear:FindFirstChild("Hitbox")
+	if hitbox and hitbox:IsA("BasePart") then return hitbox.Position end
+	return fallback
+end
+
+function Logic._projectileTrajectory(origin, direction, speed, gravity, params, frameStep)
+	local points = { origin }
+	local velocity = direction * speed
+	local previous = origin
+	local step = frameStep or 1 / 60
+	for index = 1, K.PROJECTILE_ARC_STEPS do
+		local t = K.PROJECTILE_FLIGHT_TIME * index / K.PROJECTILE_ARC_STEPS
+		-- ProjectileHandler updates velocity before position each Heartbeat.
+		local position = origin + velocity * t + Vector3.new(0, -0.5 * gravity * t * (t + step), 0)
+		local result, target = Logic._projectileSegmentRaycast(previous, position - previous, params)
+		table.insert(points, result and result.Position or position)
+		if result then return points, result, target end
+		previous = position
+	end
+	return points
+end
+
+function Logic._setProjectileArc(points, visualOrigin, color)
+	Logic._setProjectileBeam(visualOrigin, points[2], color)
+	for index = 2, #points - 1 do
+		local beam = projectileArcBeams[index - 1]
+		if not beam then
+			beam = Logic._projectileBeam():Clone()
+			beam.Name = "Arc" .. (index - 1)
+			beam.Parent = ensureProjectileFolder()
+			projectileArcBeams[index - 1] = beam
+		end
+		local delta = points[index + 1] - points[index]
+		beam.Length = delta.Magnitude
+		beam.CFrame = delta.Magnitude > 0.000001 and CFrame.lookAt(points[index], points[index + 1]) or CFrame.new(points[index])
+		beam.Color3 = color
+		beam.Transparency = 0.12
+	end
+	for index = #points - 1, #projectileArcBeams do projectileArcBeams[index].Transparency = 1 end
+end
+
 function Logic._setProjectileTargetHighlight(model)
 	if Logic._projectileTargetModel and Logic._projectileTargetModel ~= model then
 		local oldHighlight = Logic._projectileTargetModel:FindFirstChild(K.PROJECTILE_TARGET_HL)
@@ -1140,7 +1190,7 @@ function Logic._setProjectileTargetHighlight(model)
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 end
 
-local function updateProjectilePreview()
+local function updateProjectilePreview(deltaTime)
 	if not projectilePreviewAllowed() then
 		clearProjectilePreview()
 		stopProjectileHeartbeat()
@@ -1154,38 +1204,35 @@ local function updateProjectilePreview()
 		return
 	end
 
-	local startPosition = projectileStartPosition(character)
+	local startPosition = Logic._projectileStartPosition(character)
 	if not startPosition then
 		clearProjectilePreview()
 		return
 	end
 
-	local params = projectileRaycastParams(character)
-	local viewport = camera.ViewportSize
-	local aimRay = camera:ViewportPointToRay(viewport.X * 0.5, viewport.Y * 0.5)
-	local aimDirection = aimRay.Direction
-	if aimDirection.Magnitude <= 0.000001 then
-		clearProjectilePreview()
-		return
-	end
-	aimDirection = aimDirection.Unit * K.PROJECTILE_BEAM_DISTANCE
-
-	local powerLabel, powerPercent, powerColor = projectilePowerState()
+	local params = Logic._projectileRaycastParams(character)
+	-- Lookvectorgiver sends this direction, without aiming at Mouse.Hit.
+	local aimDirection = camera.CFrame.LookVector
+	local powerLabel, powerPercent, powerColor, speed = projectilePowerState()
 	updateProjectilePowerIndicator(powerLabel, powerPercent, powerColor)
-	local result, characterModel = Logic._projectileSegmentRaycast(startPosition, aimDirection, params)
-	local endPosition = result and result.Position or startPosition + aimDirection
+	local points, result, characterModel = Logic._projectileTrajectory(startPosition, aimDirection, speed,
+		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, params, deltaTime)
 	local beamColor = characterModel and K.PROJECTILE_TARGET_COLOR or powerColor
 	local impactColor = characterModel and K.PROJECTILE_TARGET_COLOR
 		or (result and Color3.fromRGB(255, 96, 72) or powerColor)
-	Logic._setProjectileBeam(startPosition, endPosition, beamColor)
-	Logic._setProjectileImpact(endPosition, impactColor)
+	Logic._setProjectileArc(points, Logic._projectileVisualOrigin(camera, startPosition), beamColor)
+	if result then
+		Logic._setProjectileImpact(result.Position, impactColor)
+	elseif projectileImpactAdornment then
+		projectileImpactAdornment.Transparency = 1
+	end
 	Logic._setProjectileTargetHighlight(characterModel)
 end
 
 function Logic._refreshProjectileVisualiser()
 	if projectilePreviewAllowed() then
 		if not projectileHeartbeatConnection then
-			projectileHeartbeatConnection = RunService.RenderStepped:Connect(updateProjectilePreview)
+			projectileHeartbeatConnection = RunService.Heartbeat:Connect(updateProjectilePreview)
 		end
 	else
 		clearProjectilePreview()
