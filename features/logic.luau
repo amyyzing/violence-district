@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 62
+local VERSION = 63
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -996,8 +996,7 @@ function Logic._projectileSegmentRaycast(origin, direction, params)
 
 	local unit = direction.Unit
 	local traveled = 0
-	local skips = 0
-	while traveled < distance and skips < 8 do
+	while traveled < distance do
 		local result = workspace:Raycast(origin + unit * traveled, unit * (distance - traveled), params)
 		if not result then
 			return nil, nil
@@ -1019,8 +1018,9 @@ function Logic._projectileSegmentRaycast(origin, direction, params)
 		local filter = params.FilterDescendantsInstances
 		table.insert(filter, result.Instance)
 		params.FilterDescendantsInstances = filter
-		traveled = math.min((result.Position - origin).Magnitude + 0.05, distance)
-		skips = skips + 1
+		-- Excluding the part lets the next cast see the wall behind it. Keep
+		-- forward progress tiny so a nearby thin wall is not skipped too.
+		traveled = math.min(math.max(traveled + 0.001, (result.Position - origin).Magnitude + 0.001), distance)
 	end
 
 	return nil, nil

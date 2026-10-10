@@ -57,6 +57,27 @@ return function()
 		expect(impact and impact.Instance == floor, "Curved path missed the floor")
 		expect(falling[#falling] == impact.Position and #falling < #points, "Trajectory continued past collision")
 		floor:Destroy()
+		local layers = Instance.new("Folder")
+		layers.Parent = fixtures
+		for index = 1, 9 do
+			local trigger = part(layers, "Trigger", origin + Vector3.new(0, 0, -index), Vector3.new(4, 4, 0.1))
+			trigger.CanCollide = false
+		end
+		local wall = part(layers, "Wall", origin + Vector3.new(0, 0, -10), Vector3.new(4, 4, 0.1))
+		local layerParams = RaycastParams.new()
+		layerParams.FilterType = Enum.RaycastFilterType.Exclude
+		local layeredHit = logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -12), layerParams)
+		expect(layeredHit and layeredHit.Instance == wall, "Skipped a solid wall behind nine non-colliding parts")
+		layers:Destroy()
+		local trigger = part(fixtures, "Trigger", origin + Vector3.new(0, 0, -1), Vector3.new(4, 4, 0.01))
+		trigger.CanCollide = false
+		local thinWall = part(fixtures, "ThinWall", origin + Vector3.new(0, 0, -1.03), Vector3.new(4, 4, 0.01))
+		local thinParams = RaycastParams.new()
+		thinParams.FilterType = Enum.RaycastFilterType.Exclude
+		local thinHit = logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -2), thinParams)
+		expect(thinHit and thinHit.Instance == thinWall, "Skip distance jumped through a nearby thin wall")
+		trigger:Destroy()
+		thinWall:Destroy()
 		local character = Instance.new("Model")
 		character.Parent = fixtures
 		local root = part(character, "HumanoidRootPart", origin, Vector3.one)

@@ -44,7 +44,8 @@ build lets you run local changes before publishing a release.
   from one deliberately injected path error, then restores the switches.
 - `scripts/test_projectile_aim.luau` checks recorded launch directions, gravity,
   frame timing, charge range, collisions, camera-spear attachment, and cleanup
-  using isolated fixtures. It does not send throws.
+  using isolated fixtures, including walls behind multiple non-colliding parts
+  and thin walls beside them. It does not send throws.
 
 The spear preview restores the earlier curved trajectory. It keeps the game's
 release offset for collision prediction and uses the camera spear's Hitbox as
