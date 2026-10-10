@@ -110,7 +110,9 @@ return function(c)
 				return
 			end
 
-			local relativeRotation = (lineGUI.Rotation - goalGUI.Rotation) % 360
+			-- Generator/healing scripts compare absolute angles, including Scourge's
+			-- continuous rotations. Wrapping can turn a missed zone into a success.
+			local relativeRotation = lineGUI.Rotation - goalGUI.Rotation
 			local trigger = shouldTrigger(relativeRotation)
 			previousRelativeRotation = relativeRotation
 			if trigger then

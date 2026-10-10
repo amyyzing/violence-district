@@ -94,15 +94,33 @@ return function(factory)
 		feature.setEnabled(true)
 		hit(recreated)
 		assert(presses == 7, "Enabled feature did not resume")
+		recreated.Visible = false
+		recreated.Goal.Rotation = 500
+		recreated.Line.Rotation = 248
+		recreated.Visible = true
+		task.wait()
+		step:Fire()
+		task.wait()
+		assert(presses == 7, "Wrapped a negative difference into a false success")
+		hit(recreated)
+		assert(presses == 8, "Absolute angles above 360 did not trigger")
+		recreated.Goal.Rotation = 700
+		task.wait()
+		recreated.Line.Rotation = 1168
+		step:Fire()
+		task.wait()
+		assert(presses == 8, "Wrapped a missed full rotation into a false success")
+		hit(recreated)
+		assert(presses == 9, "New continuous-rotation goal did not rearm")
 		local queued = prompt("SkillCheckPromptGui-con", true)
 		feature.destroy()
 		task.wait()
 		hit(queued)
-		assert(presses == 7, "Deferred work survived destroy")
+		assert(presses == 9, "Deferred work survived destroy")
 	end)
 	if feature then feature.destroy() end
 	container:Destroy()
 	step:Destroy()
 	assert(ok, err)
-	return "PASS: initial visibility, prompt switching, goal rearm, replacement, recreation, mode/enable deduplication, hidden screen, disable/resume, cleanup"
+	return "PASS: initial visibility, prompt switching, goal rearm, replacement, recreation, mode/enable deduplication, hidden screen, disable/resume, continuous rotations, cleanup"
 end

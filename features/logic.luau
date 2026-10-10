@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 63
+local VERSION = 65
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -1268,6 +1268,7 @@ function Logic._watchProjectileAnimations(character)
 	end
 
 	trackConnection(animator.AnimationPlayed:Connect(function(track)
+		if not active or character ~= getCharacter() then return end
 		local animationId = projectileTrackAnimationId(track)
 		if not animationId then
 			return
@@ -1277,7 +1278,7 @@ function Logic._watchProjectileAnimations(character)
 			if projectileWeaponActive() then
 				setProjectileHolding(nil, true)
 				trackConnection(track.Stopped:Connect(function()
-					setProjectileHolding(nil, false)
+					if active and character == getCharacter() then setProjectileHolding(nil, false) end
 				end))
 			end
 		elseif K.PROJECTILE_THROW_ANIMATION_IDS[animationId] then
@@ -1292,13 +1293,14 @@ function Logic._watchProjectileCharacter(character)
 	end
 
 	trackConnection(character:GetAttributeChangedSignal("spearmode"):Connect(function()
+		if not active or character ~= getCharacter() then return end
 		if character:GetAttribute("spearmode") ~= true then
 			setProjectileHolding(false, false)
 		end
 		Logic._refreshProjectileVisualiser()
 	end))
 	task.defer(function()
-		Logic._watchProjectileAnimations(character)
+		if active and character == getCharacter() then Logic._watchProjectileAnimations(character) end
 	end)
 end
 

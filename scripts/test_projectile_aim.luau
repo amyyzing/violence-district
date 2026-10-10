@@ -102,6 +102,21 @@ return function()
 		for _, object in ipairs(visuals:GetChildren()) do
 			if object.Name:match("^Arc") then expect(object.Transparency == 1, "Shorter path left old segments visible") end
 		end
+		local humanoid = Instance.new("Humanoid")
+		humanoid.Parent = character
+		local animator = Instance.new("Animator")
+		animator.Parent = humanoid
+		logic._watchProjectileAnimations(character)
+		for _, connection in ipairs(getconnections(animator.AnimationPlayed)) do
+			if connection.Function then
+				connection.Function({ Animation = { AnimationId = "rbxassetid://93136435416899" } })
+			end
+		end
+		expect(visuals:FindFirstChild("Beam") ~= nil, "An old character's animation changed the current preview")
+		logic._watchProjectileCharacter(character)
+		character:SetAttribute("spearmode", false)
+		task.wait()
+		expect(visuals:FindFirstChild("Beam") ~= nil, "An old character's spear-mode change cleared the current preview")
 		logic.setProjectileVisualiserEnabled(false)
 		for _, object in ipairs(visuals:GetChildren()) do expect(not object:IsA("LineHandleAdornment"), "Disable leaked arc segments") end
 	end)

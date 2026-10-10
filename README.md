@@ -36,7 +36,7 @@ build lets you run local changes before publishing a release.
 - `node scripts/check_luau_syntax.mjs` checks source syntax.
 - `scripts/test_skill_check.luau` returns a test function accepting the
   skill-check factory. It uses isolated GUI fixtures and records input without
-  sending keys to the game.
+  sending keys to the game, including continuous rotations used by King's Scourge.
 - `scripts/test_gui.luau` returns a test function for the loaded GUI. It invokes
   its callbacks, checks mouse ownership, and restores the settings.
 - `scripts/test_visual_features.luau` returns a test function requiring a loaded
@@ -57,3 +57,12 @@ latency, future target movement, and changes in frame timing can affect accuracy
 
 These checks cover local behavior; actual skill-input delivery and projectile
 accuracy also depend on the executor and the current game mechanics.
+
+The October 9 compatibility audit used live place version **10392**. Generator
+and hook discovery, team colors, completed-generator cleanup, and live path
+construction passed. Current generator/healing scripts still accept relative
+angles from 102 through 116 degrees; the helper uses a smaller window within it
+and now compares absolute rotations exactly as the game does. Old-character
+animation and spear-mode callbacks can no longer clear a new character's preview.
+GUI and projectile fixtures passed; actual Veil impacts and skill-input delivery
+were not exercised in gameplay during this audit.
