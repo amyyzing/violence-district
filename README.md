@@ -49,8 +49,8 @@ The standalone build lets you run local changes before pushing them.
   map. It checks generator label formatting, proportional placement, highlight
   lifecycle, projectile cleanup, and path API removal, then restores the switches.
 - `lua scripts/test_offline.luau` checks label data and legacy upgrade behavior
-  using simple doubles, plus 16 free-flight speed/frame-rate cases. It does not
-  validate Roblox rendering, collisions, or live launch parameters.
+  using simple doubles, plus 16 free-flight speed/frame-rate cases and four
+  recorded flying-spear traces. It does not validate Roblox rendering or collisions.
 - `scripts/test_projectile_aim.luau` checks recorded launch directions, gravity,
   frame timing, charge range, collisions, camera-spear attachment, and cleanup
   using isolated fixtures, including walls behind multiple non-colliding parts
@@ -77,7 +77,19 @@ GUI and projectile fixtures passed; actual Veil impacts and skill-input delivery
 were not exercised in gameplay during that audit. Path construction described
 above is historical; that feature has since been removed.
 
-The October 15 changes passed offline checks plus live generator-label lifecycle,
-36 GUI assertions, and 60 projectile assertions after upgrading a connected
-client from logic 58. Current Veil launch speeds, gravity multiplier, held-spear
-attachment, and impact accuracy still need a new live capture with Veil equipped.
+The October 15 changes passed live generator-label lifecycle and 36 GUI
+assertions after upgrading a connected client from logic 58.
+
+A subsequent four-minute Veil capture recorded seven launches. Medium/full
+speeds were 142.5/165, with gravity multiplier 0.5. Four flying-model traces fit
+velocity-first integration within 0.002 studs; moving-camera samples differed
+from launch directions by as much as 9 degrees. Capture data is stored in
+`scripts/fixtures/veil_2026_10_15.luau` and can be passed to the projectile test.
+Input durations and retained power-label text are observational and can include
+cooldown or post-release time; they do not prove a different charge threshold.
+
+The preview now preserves the first physical segment instead of joining the
+held spear directly to the 0.1-second sample, and samples the arc every 0.05
+seconds. Rendered-curve interpolation stayed within 0.05 studs of those flight
+traces. This validates the flight curve, not future moving-target hits or every
+collision surface; low-charge throws below the medium tier still need capture.

@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 66
+local VERSION = 67
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -80,7 +80,7 @@ local K = {
 	PROJECTILE_FULL_CHARGE_TIME = 2,
 	PROJECTILE_GRAVITY_MULTIPLIER = 0.5,
 	PROJECTILE_FLIGHT_TIME = 4,
-	PROJECTILE_ARC_STEPS = 40,
+	PROJECTILE_ARC_STEPS = 80,
 	PROJECTILE_BEAM_THICKNESS = 3,
 	PROJECTILE_BEAM_ZINDEX = 8,
 	PROJECTILE_IMPACT_RADIUS = 0.7,
@@ -962,14 +962,16 @@ function Logic._projectileTrajectory(origin, direction, speed, gravity, params, 
 end
 
 function Logic._setProjectileArc(points, visualOrigin, color)
-	Logic._setProjectileBeam(visualOrigin, points[2], color)
-	for index = 2, #points - 1 do
-		local beam = projectileArcBeams[index - 1]
+	-- Connect the cosmetic spear to the release point without replacing the
+	-- first physical curve segment with one long, flat line.
+	Logic._setProjectileBeam(visualOrigin, points[1], color)
+	for index = 1, #points - 1 do
+		local beam = projectileArcBeams[index]
 		if not beam then
 			beam = Logic._projectileBeam():Clone()
-			beam.Name = "Arc" .. (index - 1)
+			beam.Name = "Arc" .. index
 			beam.Parent = ensureProjectileFolder()
-			projectileArcBeams[index - 1] = beam
+			projectileArcBeams[index] = beam
 		end
 		local delta = points[index + 1] - points[index]
 		beam.Length = delta.Magnitude
@@ -977,7 +979,7 @@ function Logic._setProjectileArc(points, visualOrigin, color)
 		beam.Color3 = color
 		beam.Transparency = 0.12
 	end
-	for index = #points - 1, #projectileArcBeams do projectileArcBeams[index].Transparency = 1 end
+	for index = #points, #projectileArcBeams do projectileArcBeams[index].Transparency = 1 end
 end
 
 function Logic._setProjectileTargetHighlight(model)

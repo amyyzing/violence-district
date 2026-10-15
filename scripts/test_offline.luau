@@ -112,4 +112,34 @@ for _, dt in ipairs({ 1 / 120, 1 / 60, 0.02, 0.05 }) do
 		assert((points[#points] - actual).Magnitude < 0.00001, "Free-flight prediction disagrees with velocity-first integration")
 	end
 end
-print("PASS: legacy path removal/state migration; proportional label data, formatting and reuse; 16 free-flight speed/frame-rate cases")
+local capture = assert(loadfile("scripts/fixtures/veil_2026_10_15.luau"))()
+local function xyz(v) return Vector3.new(v[1], v[2], v[3]) end
+local worst, coarseWorst = 0, 0
+for _, flight in ipairs(capture.flights) do
+	local launch = capture.launches[flight.launchIndex]
+	local first, last = xyz(flight.first), xyz(flight.last)
+	local aim = xyz(launch.direction).Unit
+	local delta = first - xyz(launch.origin)
+	local age = (delta.X * aim.X + delta.Z * aim.Z) / (launch.speed * (aim.X * aim.X + aim.Z * aim.Z))
+	local gravity = capture.gravity * launch.gravityMultiplier
+	local velocity = aim * launch.speed + Vector3.new(0, -gravity * age, 0)
+	local points = logic._projectileTrajectory(first, velocity.Unit, velocity.Magnitude, gravity, nil, flight.dtSquaredSum / flight.seconds)
+	local step = 4 / (#points - 1)
+	local index = math.floor(flight.seconds / step) + 1
+	local fraction = flight.seconds / step - (index - 1)
+	local shown = points[index] + (points[index + 1] - points[index]) * fraction
+	local error = (shown - last).Magnitude
+	worst = math.max(worst, error)
+	assert(error < 0.05, "Drawn curve deviates from captured flying spear by over 0.05 studs")
+	local coarseIndex = math.floor(flight.seconds / (step * 2)) * 2 + 1
+	local coarseFraction = (flight.seconds - (coarseIndex - 1) * step) / (step * 2)
+	local coarseShown = points[coarseIndex] + (points[coarseIndex + 2] - points[coarseIndex]) * coarseFraction
+	coarseWorst = math.max(coarseWorst, (coarseShown - last).Magnitude)
+end
+assert(coarseWorst > 0.05, "Capture no longer reproduces the coarse-curve regression")
+local curve = logic._projectileTrajectory(origin, direction, 165, 98.1, nil, 0.02)
+logic._setProjectileArc(curve, Vector3.new(1, 1, 1), Color3.fromRGB(255, 255, 255))
+local visuals = workspace:FindFirstChild("CateyesProjectileVisualiser")
+assert((visuals.Beam.CFrame.Position + visuals.Beam.CFrame.LookVector * visuals.Beam.Length - curve[1]).Magnitude < 0.00001, "Connector bypasses the release point")
+assert((visuals.Arc1.CFrame.Position - curve[1]).Magnitude < 0.00001, "First physical curve segment is missing")
+print(string.format("PASS: path migration, label data, 16 free-flight cases, %d captured flights (new %.4f vs old %.4f studs), first curve segment", #capture.flights, worst, coarseWorst))

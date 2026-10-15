@@ -1,5 +1,5 @@
 -- Uses isolated client fixtures; never throws a spear or sends a remote.
-return function()
+return function(capture)
 	local logic = getgenv().ViolenceDistrictLogic
 	local saved = logic.getState().projectileVisualiserEnabled
 	local fixtures = Instance.new("Folder")
@@ -38,6 +38,23 @@ return function()
 				actual = actual + velocity * 0.02
 			end
 			expect((preview[#preview] - actual).Magnitude < 1, "Recorded launch replay diverged by over one stud")
+		end
+		if capture then
+			local function xyz(v) return Vector3.new(v[1], v[2], v[3]) end
+			for _, flight in ipairs(capture.flights) do
+				local launch = capture.launches[flight.launchIndex]
+				local first, last, aim = xyz(flight.first), xyz(flight.last), xyz(launch.direction).Unit
+				local delta = first - xyz(launch.origin)
+				local age = (delta.X * aim.X + delta.Z * aim.Z) / (launch.speed * (aim.X * aim.X + aim.Z * aim.Z))
+				local gravity = capture.gravity * launch.gravityMultiplier
+				local velocity = aim * launch.speed + Vector3.new(0, -gravity * age, 0)
+				local curve = logic._projectileTrajectory(first, velocity.Unit, velocity.Magnitude, gravity, params, flight.dtSquaredSum / flight.seconds)
+				local step = 4 / (#curve - 1)
+				local index = math.floor(flight.seconds / step) + 1
+				local fraction = flight.seconds / step - (index - 1)
+				local shown = curve[index] + (curve[index + 1] - curve[index]) * fraction
+				expect((shown - last).Magnitude < 0.05, "Drawn arc is too flat against recorded flying-model positions")
+			end
 		end
 		local points, result = logic._projectileTrajectory(origin, Vector3.new(0, 0, -1), 165, 98.1, params, 0.02)
 		expect(result == nil, "Empty trajectory reported an impact")
@@ -97,10 +114,12 @@ return function()
 		local visuals = workspace.CateyesProjectileVisualiser
 		expect((visuals.Beam.CFrame.Position - visualOrigin).Magnitude < 0.001, "First drawn segment starts too far forward")
 		local rayVector = (visuals.Beam.CFrame.LookVector * visuals.Beam.Length)
-		expect((visuals.Beam.CFrame.Position + rayVector - points[2]).Magnitude < 0.001, "First segment does not join the physical trajectory")
+		expect((visuals.Beam.CFrame.Position + rayVector - points[1]).Magnitude < 0.001, "Cosmetic connector does not reach the physical release point")
+		expect((visuals.Arc1.CFrame.Position - points[1]).Magnitude < 0.001, "The first physical curve segment was skipped")
+		expect((visuals.Arc1.CFrame.Position + visuals.Arc1.CFrame.LookVector * visuals.Arc1.Length - points[2]).Magnitude < 0.001, "First physical segment misses its sample")
 		logic._setProjectileArc({ release, release + Vector3.new(0, 0, -1) }, visualOrigin, Color3.new(1, 1, 1))
 		for _, object in ipairs(visuals:GetChildren()) do
-			if object.Name:match("^Arc") then expect(object.Transparency == 1, "Shorter path left old segments visible") end
+			if object.Name:match("^Arc") and object.Name ~= "Arc1" then expect(object.Transparency == 1, "Shorter path left old segments visible") end
 		end
 		local humanoid = Instance.new("Humanoid")
 		humanoid.Parent = character
