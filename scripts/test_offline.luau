@@ -1,0 +1,115 @@
+-- Plain Lua checks for label data, legacy migration and free-flight math.
+-- These lightweight doubles do not validate Roblox rendering or collisions.
+local vector = {}
+local vectorMeta = {
+	__add = function(a, b) return Vector3.new(a.X + b.X, a.Y + b.Y, a.Z + b.Z) end,
+	__sub = function(a, b) return Vector3.new(a.X - b.X, a.Y - b.Y, a.Z - b.Z) end,
+	__mul = function(a, b) return Vector3.new(a.X * b, a.Y * b, a.Z * b) end,
+	__div = function(a, b) return Vector3.new(a.X / b, a.Y / b, a.Z / b) end,
+	__index = function(v, key)
+		if key == "Magnitude" then return math.sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z) end
+		if key == "Unit" then return v / v.Magnitude end
+		return vector[key]
+	end,
+}
+Vector3 = { new = function(x, y, z) return setmetatable({ X = x, Y = y, Z = z }, vectorMeta) end }
+Vector3.zero, Vector3.one = Vector3.new(0, 0, 0), Vector3.new(1, 1, 1)
+CFrame = {
+	new = function(v) return { Position = v or Vector3.zero, LookVector = Vector3.new(0, 0, -1) } end,
+	lookAt = function(a, b) return { Position = a, LookVector = (b - a).Unit } end,
+}
+Color3 = { fromRGB = function(...) return { ... } end }
+UDim2 = { fromScale = function(x, y) return { X = { Scale = x, Offset = 0 }, Y = { Scale = y, Offset = 0 } } end }
+Enum = setmetatable({}, { __index = function(t, category)
+	local values = setmetatable({}, { __index = function(_, name) return category .. "." .. name end })
+	rawset(t, category, values)
+	return values
+end })
+math.clamp = function(x, lo, hi) return math.max(lo, math.min(x, hi)) end
+table.clear = function(t) for k in pairs(t) do t[k] = nil end end
+typeof = type
+local methods = {}
+local nodeMeta = {
+	__index = function(n, key) return methods[key] or n.props[key] or n:FindFirstChild(key) end,
+	__newindex = function(n, key, value)
+		if key == "Parent" then
+			local old = n.props.Parent
+			if old then for i, child in ipairs(old.children) do if child == n then table.remove(old.children, i) break end end end
+			if value then table.insert(value.children, n) end
+		end
+		n.props[key] = value
+	end,
+}
+Instance = { new = function(class)
+	local signal = { Connect = function() return { Disconnect = function() end } end }
+	return setmetatable({ props = { ClassName = class, Name = class, DescendantAdded = signal, DescendantRemoving = signal }, children = {}, attributes = {} }, nodeMeta)
+end }
+function methods:IsA(class) return self.ClassName == class or class == "BasePart" and self.ClassName == "Part" end
+function methods:FindFirstChild(name, recursive)
+	for _, child in ipairs(self.children) do if child.Name == name then return child end end
+	if recursive then for _, child in ipairs(self.children) do local found = child:FindFirstChild(name, true) if found then return found end end end
+end
+function methods:GetDescendants()
+	local out = {}
+	for _, child in ipairs(self.children) do table.insert(out, child) for _, nested in ipairs(child:GetDescendants()) do table.insert(out, nested) end end
+	return out
+end
+function methods:FindFirstChildWhichIsA(class, recursive)
+	for _, child in ipairs(recursive and self:GetDescendants() or self.children) do if child:IsA(class) then return child end end
+end
+function methods:GetAttribute(name) return self.attributes[name] end
+function methods:Destroy() self.Parent = nil end
+function methods:Clone()
+	local clone = Instance.new(self.ClassName)
+	for k, v in pairs(self.props) do if k ~= "Parent" then clone[k] = v end end
+	return clone
+end
+local globals, migrated, destroyed = {}, false, false
+getgenv = function() return globals end
+local player = { WaitForChild = function() return Instance.new("PlayerGui") end }
+loadstring = load
+game = {
+	GetService = function(_, name) if name == "Players" then return { LocalPlayer = player } end return {} end,
+	HttpGet = function(_, url)
+		local file = assert(io.open("features/" .. assert(url:match("([^/]+)$")), "r"))
+		local source = file:read("*a")
+		file:close()
+		return source
+	end,
+}
+workspace = Instance.new("Workspace")
+globals.ViolenceDistrictLogic = {
+	Version = 65, getState = function() return { highlightsEnabled = true, pathTreeEnabled = true } end,
+	setPathTreeEnabled = function(on) migrated = not on end, destroy = function() destroyed = true end,
+}
+local logic = assert(loadfile("features/logic.luau"))()
+assert(migrated and destroyed, "Old path feature was not stopped during upgrade")
+assert(logic.setPathTreeEnabled == nil and logic.getState().pathTreeEnabled == nil, "Removed path API remains")
+assert(logic.getState().highlightsEnabled, "Upgrade lost the remaining feature state")
+local model, hitbox = Instance.new("Model"), Instance.new("Part")
+model.Parent, hitbox.Parent, hitbox.Name = workspace, model, "HitBox"
+hitbox.Size = Vector3.new(4, 6, 4)
+for _, sample in ipairs({ { 0, "0" }, { 42.39, "42.3" }, { 99.99, "99.9" }, { 100, "100" }, { -2, "0" }, { 130, "100" }, { "75.5%", "75.5" } }) do
+	model.attributes.RepairProgress = sample[1]
+	local label = logic._updateGeneratorProgress(model)
+	assert(label.Progress.Text == sample[2] .. "/100 (" .. sample[2] .. "%)", "Wrong progress fraction")
+	assert(label.Adornee == hitbox and label.StudsOffsetWorldSpace.Y == 3.75, "Incorrect generator attachment")
+	assert(label.Size.X.Scale == 6 and label.Size.X.Offset == 0 and label.Progress.TextScaled, "Label does not scale proportionally")
+end
+assert(#model.children == 2, "Progress updates duplicated the label")
+hitbox.Size = Vector3.new(4, 10, 4)
+assert(logic._updateGeneratorProgress(model).StudsOffsetWorldSpace.Y == 5.75, "Label offset ignored generator size")
+logic._projectileSegmentRaycast = function() return nil end
+local origin, direction = Vector3.new(0, 0, 0), Vector3.new(0, 0, -1)
+for _, dt in ipairs({ 1 / 120, 1 / 60, 0.02, 0.05 }) do
+	for _, speed in ipairs({ 1, 50, 142.5, 165 }) do
+		local points = logic._projectileTrajectory(origin, direction, speed, 98.1, nil, dt)
+		local actual, velocity = origin, direction * speed
+		for _ = 1, math.floor(4 / dt + 0.5) do
+			velocity = velocity + Vector3.new(0, -98.1 * dt, 0)
+			actual = actual + velocity * dt
+		end
+		assert((points[#points] - actual).Magnitude < 0.00001, "Free-flight prediction disagrees with velocity-first integration")
+	end
+end
+print("PASS: legacy path removal/state migration; proportional label data, formatting and reuse; 16 free-flight speed/frame-rate cases")

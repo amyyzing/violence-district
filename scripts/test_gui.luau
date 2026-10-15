@@ -19,10 +19,10 @@ return function()
 	local fields = {
 		{ "Highlights", "highlightsEnabled", logic.setHighlightsEnabled },
 		{ "SkillCheck", "skillCheckEnabled", logic.setSkillCheckEnabled },
-		{ "PathTree", "pathTreeEnabled", logic.setPathTreeEnabled },
 		{ "Projectile", "projectileVisualiserEnabled", logic.setProjectileVisualiserEnabled },
 	}
 	local ok, err = pcall(function()
+		expect(not panel.Features:FindFirstChild("PathTreeRow") and logic.setPathTreeEnabled == nil, "Path feature was not removed")
 		if not panel.Visible then activate(gui.Reopen) end
 		expect(panel.Title.Modal, "Visible panel did not release the pointer")
 		for _, item in ipairs(fields) do

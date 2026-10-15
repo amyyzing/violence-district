@@ -2,7 +2,7 @@ local LOGIC_KEY = "ViolenceDistrictLogic"
 local GUI_KEY = "ViolenceDistrictGui"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local LOGIC_VERSION = 65
+local LOGIC_VERSION = 66
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -98,7 +98,7 @@ if not mounted and type(gethui) == "function" then
 end
 if not mounted then sg.Parent = PG end
 panel = make("Frame", "Panel", sg, {
-	Size = UDim2.fromOffset(348, 376), BackgroundColor3 = C.panel,
+	Size = UDim2.fromOffset(348, 330), BackgroundColor3 = C.panel,
 	Position = previousGuiState and previousGuiState.position or UDim2.fromOffset(48, 80),
 	Visible = not previousGuiState or previousGuiState.enabled ~= false,
 })
@@ -121,13 +121,12 @@ corner(close, 9)
 make("Frame", "Divider", panel, { Position = UDim2.fromOffset(20, 80), Size = UDim2.fromOffset(308, 1), BackgroundColor3 = C.line })
 
 local group = make("Frame", "Features", panel, {
-	Position = UDim2.fromOffset(20, 96), Size = UDim2.fromOffset(308, 184), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(20, 96), Size = UDim2.fromOffset(308, 138), BackgroundColor3 = C.surface,
 })
 corner(group, 10)
 local channels = {
 	{ id = "Highlights", title = "Highlights", hotkey = "Y", key = "highlightsEnabled", set = Logic.setHighlightsEnabled },
 	{ id = "SkillCheck", title = "Skill check", hotkey = "G", key = "skillCheckEnabled", set = Logic.setSkillCheckEnabled },
-	{ id = "PathTree", title = "Generator paths", hotkey = "F", key = "pathTreeEnabled", set = Logic.setPathTreeEnabled },
 	{ id = "Projectile", title = "Projectile preview", hotkey = "H", key = "projectileVisualiserEnabled", set = Logic.setProjectileVisualiserEnabled },
 }
 for index, channel in ipairs(channels) do
@@ -154,9 +153,9 @@ for index, channel in ipairs(channels) do
 	end
 end
 
-label(panel, "ModeLabel", "Skill mode", 20, 295, 110, 32, 12, C.muted)
+label(panel, "ModeLabel", "Skill mode", 20, 249, 110, 32, 12, C.muted)
 local modeGroup = make("Frame", "Mode", panel, {
-	Position = UDim2.fromOffset(152, 294), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(152, 248), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
 })
 corner(modeGroup, 9)
 local modeButtons = {}
@@ -166,8 +165,8 @@ for index, mode in ipairs({ "Normal", "Perfect" }) do
 	modeButtons[mode] = option
 	connect(option.Activated, function() Logic.setSkillCheckMode(mode) end)
 end
-local count = label(panel, "Status", "All off", 20, 345, 128, 16, 11, C.muted)
-local hint = label(panel, "Hint", "Right Ctrl to hide", 170, 345, 158, 16, 11, C.muted)
+local count = label(panel, "Status", "All off", 20, 299, 128, 16, 11, C.muted)
+local hint = label(panel, "Hint", "Right Ctrl to hide", 170, 299, 158, 16, 11, C.muted)
 hint.TextXAlignment = Enum.TextXAlignment.Right
 
 local function render(state)
@@ -191,11 +190,11 @@ local function fitPanel()
 	local viewport = sg.AbsoluteSize
 	if viewport.X <= 0 or viewport.Y <= 0 then return end
 	local inset = game:GetService("GuiService"):GetGuiInset()
-	scale.Scale = math.min(1, math.max(1, viewport.X - 16) / 348, math.max(1, viewport.Y - inset.Y - 16) / 376)
+	scale.Scale = math.min(1, math.max(1, viewport.X - 16) / 348, math.max(1, viewport.Y - inset.Y - 16) / 330)
 	local x = panel.Position.X.Scale * viewport.X + panel.Position.X.Offset
 	local y = panel.Position.Y.Scale * viewport.Y + panel.Position.Y.Offset
 	panel.Position = UDim2.fromOffset(math.clamp(x, 8, math.max(8, viewport.X - 348 * scale.Scale - 8)),
-		math.clamp(y, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 376 * scale.Scale - 8)))
+		math.clamp(y, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 330 * scale.Scale - 8)))
 	reopen.Position = UDim2.fromOffset(12, math.clamp(180, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 52)))
 end
 -- Modal only releases the pointer while this panel is visible.

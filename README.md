@@ -7,12 +7,17 @@ The small indicator rotates and lights up when enabled.
 | --- | --- |
 | Highlights | Y |
 | Skill check | G |
-| Generator paths | F |
 | Projectile preview | H |
 
 Choose **Normal** or **Perfect** beside **Skill mode**. Drag the title to move
 the panel. **Right Control** or the minus button hides it; the floating **CE**
 button reopens it. The panel automatically fits smaller viewports.
+
+Highlights also show generator progress, for example `42.3/100 (42.3%)`.
+Labels sit above the generator hitbox and scale with distance and camera zoom.
+They update with repair progress and disappear on completion, removal, or when
+Highlights is turned off. The fraction uses the game's 0–100 progress scale.
+Generator paths and the F hotkey have been removed.
 
 The GUI uses maximum display order in CoreGui when supported by the executor,
 with a fallback to its hidden UI container or PlayerGui.
@@ -24,12 +29,13 @@ hiding, disabling, or destroying it removes that modal state. It never writes
 ## Local build
 
 Run `node scripts/build_bundle.mjs` to produce `build/violence-district.luau`.
-Execute that file's contents in the connected client. It includes all four
+Execute that file's contents in the connected client. It includes all three
 feature modules. Rerunning preserves switches, skill mode, panel position,
 and visibility, and replaces the old GUI.
 
-The release loader remains pinned to its published release. The standalone
-build lets you run local changes before publishing a release.
+Both `loader.luau` and `dev_loader.luau` fetch the current main branch. The normal
+loader previously fetched v0.1.10 (logic 58), which omitted the newer spear fixes.
+The standalone build lets you run local changes before pushing them.
 
 ## Checks
 
@@ -40,8 +46,11 @@ build lets you run local changes before publishing a release.
 - `scripts/test_gui.luau` returns a test function for the loaded GUI. It invokes
   its callbacks, checks mouse ownership, and restores the settings.
 - `scripts/test_visual_features.luau` returns a test function requiring a loaded
-  map. It checks owned fixtures, live path construction, cleanup, and recovery
-  from one deliberately injected path error, then restores the switches.
+  map. It checks generator label formatting, proportional placement, highlight
+  lifecycle, projectile cleanup, and path API removal, then restores the switches.
+- `lua scripts/test_offline.luau` checks label data and legacy upgrade behavior
+  using simple doubles, plus 16 free-flight speed/frame-rate cases. It does not
+  validate Roblox rendering, collisions, or live launch parameters.
 - `scripts/test_projectile_aim.luau` checks recorded launch directions, gravity,
   frame timing, charge range, collisions, camera-spear attachment, and cleanup
   using isolated fixtures, including walls behind multiple non-colliding parts
@@ -65,4 +74,10 @@ angles from 102 through 116 degrees; the helper uses a smaller window within it
 and now compares absolute rotations exactly as the game does. Old-character
 animation and spear-mode callbacks can no longer clear a new character's preview.
 GUI and projectile fixtures passed; actual Veil impacts and skill-input delivery
-were not exercised in gameplay during this audit.
+were not exercised in gameplay during that audit. Path construction described
+above is historical; that feature has since been removed.
+
+The October 15 changes passed offline checks plus live generator-label lifecycle,
+36 GUI assertions, and 60 projectile assertions after upgrading a connected
+client from logic 58. Current Veil launch speeds, gravity multiplier, held-spear
+attachment, and impact accuracy still need a new live capture with Veil equipped.

@@ -1,4 +1,4 @@
-local BASE = "https://raw.githubusercontent.com/amyyzing/violence-district/v0.1.10/"
+local BASE = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
 local globalState = getgenv and getgenv() or _G
 
 globalState.ViolenceDistrictBaseUrl = BASE
