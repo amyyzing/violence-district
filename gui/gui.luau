@@ -2,7 +2,7 @@ local LOGIC_KEY = "ViolenceDistrictLogic"
 local GUI_KEY = "ViolenceDistrictGui"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local LOGIC_VERSION = 82
+local LOGIC_VERSION = 83
 local PANEL_HEIGHT = 328
 
 local Players = game:GetService("Players")
@@ -101,6 +101,21 @@ if not mounted and type(gethui) == "function" then
 	mounted = pcall(function() sg.Parent = assert(gethui(), "UI container unavailable") end)
 end
 if not mounted then sg.Parent = PG end
+local aimFovEnabled = false
+local aimFov = make("Frame", "SpearAimFov", sg, {
+	AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, Visible = false,
+	Size = UDim2.fromOffset(Logic.SpearAimFovRadius * 2, Logic.SpearAimFovRadius * 2),
+})
+make("UICorner", "Corner", aimFov, { CornerRadius = UDim.new(0.5, 0) })
+make("UIStroke", "Outline", aimFov, { Color = C.accent, Thickness = 1, Transparency = 0.35 })
+local function updateAimFov()
+	aimFov.Visible = aimFovEnabled
+	if aimFovEnabled then
+		local position = UserInputService:GetMouseLocation() - sg.AbsolutePosition
+		aimFov.Position = UDim2.fromOffset(position.X, position.Y)
+	end
+end
+connect(game:GetService("RunService").RenderStepped, updateAimFov)
 panel = make("Frame", "Panel", sg, {
 	Size = UDim2.fromOffset(348, PANEL_HEIGHT), BackgroundColor3 = C.panel,
 	Position = previousGuiState and previousGuiState.position or UDim2.fromOffset(48, 80),
@@ -277,6 +292,8 @@ for index, mode in ipairs({ "Normal", "Perfect" }) do
 	connect(option.Activated, function() Logic.setSkillCheckMode(mode) end)
 end
 local function render(state)
+	aimFovEnabled = state.spearAimEnabled == true
+	updateAimFov()
 	for _, channel in ipairs(channels) do
 		local on = state[channel.key] == true
 		channel.status.Text = on and "On" or "Off"

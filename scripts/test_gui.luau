@@ -44,6 +44,15 @@ return function()
 			activate(content.Mode[mode])
 			expect(logic.getState().skillCheckMode == mode, "Mode selection failed")
 		end
+		logic.setSpearAimEnabled(true)
+		task.wait(0.03)
+		local fov = gui.SpearAimFov
+		expect(fov.Visible and fov.AbsoluteSize.X == logic.SpearAimFovRadius * 2, "Aim FOV did not match the selection radius")
+		local mouse = input:GetMouseLocation()
+		expect((fov.AbsolutePosition + fov.AbsoluteSize * 0.5 - mouse).Magnitude < 1, "Aim FOV was offset from the mouse")
+		logic.setSpearAimEnabled(false)
+		task.wait(0.03)
+		expect(not fov.Visible, "Aim FOV remained visible after disabling aim")
 		local behavior, icon = input.MouseBehavior, input.MouseIconEnabled
 		activate(content.Close)
 		expect(not controller.getState().enabled and not content.Title.Modal, "Hide did not release modal state")

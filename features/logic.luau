@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 82
+local VERSION = 83
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -92,6 +92,7 @@ local K = {
 	PROJECTILE_START_UP = 1.5,
 	PROJECTILE_TARGET_HL = "CateyesProjectileTargetHighlight",
 	PROJECTILE_TARGET_COLOR = Color3.fromRGB(255, 72, 112),
+	SPEAR_AIM_FOV_RADIUS = 120,
 	PROJECTILE_HOLD_ANIMATION_IDS = {
 		["92098503722633"] = true,
 		["84093948968516"] = true,
@@ -901,7 +902,7 @@ function Logic._selectSpearAimTarget(camera, mouse, players)
 			local point, visible = camera:WorldToViewportPoint(torso.Position)
 			if visible and point.Z > 0 then
 				local distance = (Vector2.new(point.X, point.Y) - mouse).Magnitude
-				if distance < best then closest, best = player, distance end
+				if distance <= K.SPEAR_AIM_FOV_RADIUS and distance < best then closest, best = player, distance end
 			end
 		end
 	end
@@ -1639,6 +1640,7 @@ end
 
 Logic.Changed = stateChanged.Event
 Logic.SkillModes = K.SKILL_MODES
+Logic.SpearAimFovRadius = K.SPEAR_AIM_FOV_RADIUS
 Logic.Version = VERSION
 
 if globalState then

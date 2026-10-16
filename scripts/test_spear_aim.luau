@@ -71,8 +71,10 @@ return function(logic)
 		return { Team = { Name = team or "Survivors" }, Character = model }
 	end
 	local near, far, spectator = player(105), player(160), player(100, "Spectator")
+	local outside = player(100 + logic.SpearAimFovRadius + 1)
 	local camera = { WorldToViewportPoint = function(_, p) return Vector3.new(p.X, p.Y, 1), true end }
 	local ok, err = pcall(function()
+		expect(logic._selectSpearAimTarget(camera, Vector2.new(100, 100), { outside }) == nil, "Selected target outside the FOV circle")
 		expect(logic._selectSpearAimTarget(camera, Vector2.new(100, 100), { far, spectator, near }) == near, "Did not select survivor nearest cursor")
 		near.Character:SetAttribute("Knocked", true)
 		expect(logic._selectSpearAimTarget(camera, Vector2.new(100, 100), { near, far }) == far, "Selected a knocked survivor")
