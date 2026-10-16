@@ -114,13 +114,35 @@ make("UIStroke", "Outline", reopen, { Color = C.line, Thickness = 1 })
 reopen.Visible = not panel.Visible
 
 local header = button(panel, "Title", "", 20, 14, 258, 38, C.panel)
-label(header, "Brand", "Cateyes", 0, 0, 220, 28, 23, C.text, Enum.Font.GothamBold)
+local brand = label(header, "Brand", "Cateyes", 0, 0, 258, 38, 23, C.text, Enum.Font.GothamBold)
+brand.TextXAlignment = Enum.TextXAlignment.Center
+brand.TextYAlignment = Enum.TextYAlignment.Center
 local close = button(panel, "Close", "", 296, 20, 32, 32, C.surface)
 corner(close, 9)
 local minimizeIcon = make("Frame", "MinimizeIcon", close, {
-	Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(20, 20), BackgroundTransparency = 1,
+	AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(20, 20), BackgroundTransparency = 1,
 })
-make("UIScale", "Scale", minimizeIcon, { Scale = 0.8 })
+local minimizeScale = make("UIScale", "Scale", minimizeIcon, { Scale = 0.65 })
+local closeHovered, closePressed = false, false
+local function animateClose()
+	tween(close, { BackgroundColor3 = (closeHovered or closePressed) and C.hover or C.surface })
+	tween(minimizeScale, { Scale = closePressed and 0.55 or (closeHovered and 0.72 or 0.65) })
+end
+connect(close.MouseEnter, function() closeHovered = true animateClose() end)
+connect(close.MouseLeave, function() closeHovered, closePressed = false, false animateClose() end)
+connect(close.InputBegan, function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		closePressed = true
+		animateClose()
+	end
+end)
+connect(close.InputEnded, function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		closePressed = false
+		animateClose()
+	end
+end)
 -- Four inward corners, matching the supplied minimize symbol without an asset download.
 for index, position in ipairs({ Vector2.new(0, 0), Vector2.new(12, 0), Vector2.new(12, 12), Vector2.new(0, 12) }) do
 	local segment = make("Frame", "Corner" .. index, minimizeIcon, {
@@ -170,7 +192,8 @@ for index, channel in ipairs(channels) do
 	end
 end
 
-local healingCounter = label(panel, "HealingCounter", "Heal —/100", 20, 232, 120, 34, 12, C.accent, Enum.Font.GothamMedium)
+local healingCounter = label(panel, "HealingCounter", "Heal —/100", 20, 232, 135, 34, 12, C.accent, Enum.Font.GothamMedium)
+healingCounter.TextXAlignment = Enum.TextXAlignment.Center
 local function updateHealingCounter()
 	if destroyed then return end
 	local humanoid = healingCharacter and healingCharacter:FindFirstChildOfClass("Humanoid")
@@ -256,6 +279,8 @@ local function syncVisibility()
 end
 local function setVisible(visible)
 	drag = nil
+	closeHovered, closePressed = false, false
+	animateClose()
 	panel.Visible = visible
 	reopen.Visible = not visible
 	fitPanel()
@@ -275,7 +300,11 @@ connect(UserInputService.InputChanged, function(input)
 	fitPanel()
 end)
 connect(UserInputService.InputEnded, function(input) if drag and input == drag.input then drag = nil end end)
-connect(UserInputService.WindowFocusReleased, function() drag = nil end)
+connect(UserInputService.WindowFocusReleased, function()
+	drag = nil
+	closeHovered, closePressed = false, false
+	animateClose()
+end)
 connect(close.Activated, function() setVisible(false) end)
 connect(reopen.Activated, function() setVisible(true) end)
 connect(Logic.Changed, render)
