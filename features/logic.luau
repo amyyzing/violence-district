@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 79
+local VERSION = 80
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -29,6 +29,7 @@ if existing then
 	safeCall(existing.setHighlightsEnabled, false)
 	safeCall(existing.setPathTreeEnabled, false)
 	safeCall(existing.setProjectileVisualiserEnabled, false)
+	safeCall(existing.setSpearAimEnabled, false)
 
 	if existing.destroy then
 		existing.destroy()
@@ -43,6 +44,8 @@ if existing then
 		existing.setHighlightsEnabled = noop
 		existing.setPathTreeEnabled = noop
 		existing.setProjectileVisualiserEnabled = noop
+		existing.setSpearAimEnabled = noop
+		existing.toggleSpearAim = noop
 	end)
 
 	if globalState then
@@ -114,6 +117,7 @@ K.FEATURE_MODULE_FILES = {
 local highlightsEnabled = previousState and previousState.highlightsEnabled == true or false
 local skillCheckEnabled = previousState and previousState.skillCheckEnabled == true or false
 local projectileVisualiserEnabled = previousState and previousState.projectileVisualiserEnabled == true or false
+local spearAimEnabled = previousState and previousState.spearAimEnabled == true or false
 local skillCheckMode = previousState and previousState.skillCheckMode or K.DEFAULT_SKILL_MODE
 local started = false
 local active = true
@@ -138,6 +142,8 @@ local projectileThrowHolding = false
 local projectileInputHolding = false
 local projectileAnimationHolding = false
 local projectileHoldStartClock = 0
+local spearAimBound, spearAimTarget = false, nil
+local spearAimReleaseUntil, spearAimSpeed = 0, K.PROJECTILE_SPEED
 
 local featureModules = {}
 
@@ -167,6 +173,7 @@ local function copyState()
 		highlightsEnabled = highlightsEnabled,
 		skillCheckEnabled = skillCheckEnabled,
 		projectileVisualiserEnabled = projectileVisualiserEnabled,
+		spearAimEnabled = spearAimEnabled,
 		skillCheckMode = skillCheckMode,
 	}
 end
@@ -730,7 +737,9 @@ local function setProjectileHolding(inputHolding, animationHolding)
 	local nextHolding = projectileInputHolding or projectileAnimationHolding
 	if nextHolding and not projectileThrowHolding then
 		projectileHoldStartClock = os.clock()
+		spearAimTarget, spearAimReleaseUntil = nil, 0
 	elseif not nextHolding then
+		if projectileThrowHolding and spearAimTarget then spearAimReleaseUntil = os.clock() + 0.15 end
 		projectileHoldStartClock = 0
 	end
 
@@ -816,6 +825,101 @@ function Logic._projectileRaycastParams(character)
 	end)
 
 	return params
+end
+
+function Logic._spearIntercept(origin, target, targetVelocity, speed, gravity, frameStep, latency)
+	if speed <= 0 then return nil end
+	local relative = target + targetVelocity * (latency or 0) - origin
+	local step = frameStep or 1 / 60
+	local function displacement(t)
+		return relative + targetVelocity * t + Vector3.new(0, 0.5 * gravity * t * (t + step), 0)
+	end
+	local function errorAt(t)
+		local delta = displacement(t)
+		return delta.Magnitude * delta.Magnitude - speed * speed * t * t
+	end
+	local before = 0
+	for index = 1, 400 do
+		local after = K.PROJECTILE_FLIGHT_TIME * index / 400
+		if errorAt(after) <= 0 then
+			for _ = 1, 24 do
+				local middle = (before + after) * 0.5
+				if errorAt(middle) > 0 then before = middle else after = middle end
+			end
+			local time = (before + after) * 0.5
+			local delta = displacement(time)
+			if delta.Magnitude < 0.000001 then return nil end
+			return delta.Unit, time, target + targetVelocity * (time + (latency or 0))
+		end
+		before = after
+	end
+	return nil
+end
+
+function Logic._spearAimParts(player)
+	if player == LP or not player.Team or not player.Team.Name:lower():match("^survivor") then return nil end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not humanoid or humanoid.Health <= 0 or character:GetAttribute("Knocked") then return nil end
+	return root, character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") or root, humanoid
+end
+
+function Logic._selectSpearAimTarget(camera, mouse, players)
+	local closest, best = nil, math.huge
+	for _, player in ipairs(players or Players:GetPlayers()) do
+		local root, torso = Logic._spearAimParts(player)
+		if root then
+			local point, visible = camera:WorldToViewportPoint(torso.Position)
+			if visible and point.Z > 0 then
+				local distance = (Vector2.new(point.X, point.Y) - mouse).Magnitude
+				if distance < best then closest, best = player, distance end
+			end
+		end
+	end
+	return closest
+end
+
+local function stopSpearAim()
+	if spearAimBound then RunService:UnbindFromRenderStep("CateyesSpearAim") end
+	spearAimBound, spearAimTarget, spearAimReleaseUntil = false, nil, 0
+	Logic._spearAimDebug = nil
+end
+
+local function updateSpearAim(deltaTime)
+	local character, camera = getCharacter(), workspace.CurrentCamera
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not active or not spearAimEnabled or not projectileWeaponActive() or not camera
+		or not humanoid or humanoid.Health <= 0 or not LP.Team or LP.Team.Name ~= "Killer"
+		or (not projectileThrowHolding and os.clock() > spearAimReleaseUntil) then stopSpearAim() return end
+	if not spearAimTarget and projectileThrowHolding then
+		local inset = game:GetService("GuiService"):GetGuiInset()
+		spearAimTarget = Logic._selectSpearAimTarget(camera, UserInputService:GetMouseLocation() - inset)
+	end
+	if not spearAimTarget then return end
+	local root, torso, targetHumanoid = Logic._spearAimParts(spearAimTarget)
+	if not root then stopSpearAim() return end
+	local origin = Logic._projectileStartPosition(character)
+	if not origin then return end
+	if projectileThrowHolding then local _, _, _, speed = projectilePowerState() spearAimSpeed = speed end
+	local velocity = root.AssemblyLinearVelocity
+	if targetHumanoid.FloorMaterial ~= Enum.Material.Air then velocity = Vector3.new(velocity.X, 0, velocity.Z) end
+	local ok, ping = pcall(function() return LP:GetNetworkPing() end)
+	local latency = ok and math.clamp(ping * 0.5, 0, 0.25) or 0
+	local direction, time, point = Logic._spearIntercept(origin, torso.Position, velocity, spearAimSpeed,
+		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, deltaTime, latency)
+	Logic._spearAimDebug = { target = spearAimTarget, direction = direction, flightTime = time, point = point, speed = spearAimSpeed }
+	if direction then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, camera.CFrame.Position + direction) end
+end
+
+function Logic._refreshSpearAim()
+	if active and spearAimEnabled and projectileWeaponActive()
+		and (projectileThrowHolding or os.clock() < spearAimReleaseUntil) then
+		if not spearAimBound then
+			RunService:BindToRenderStep("CateyesSpearAim", Enum.RenderPriority.Camera.Value + 1, updateSpearAim)
+			spearAimBound = true
+		end
+	else stopSpearAim() end
 end
 
 function Logic._projectileCharacterModel(instance)
@@ -1074,10 +1178,11 @@ local function updateProjectilePreview(deltaTime)
 end
 
 function Logic._refreshProjectileVisualiser()
+	Logic._refreshSpearAim()
 	if projectilePreviewAllowed() then
 		if not projectileRenderBound then
 			-- Draw from this frame's camera, rather than the previous Heartbeat's aim.
-			RunService:BindToRenderStep("CateyesProjectilePreview", Enum.RenderPriority.Camera.Value + 1, updateProjectilePreview)
+			RunService:BindToRenderStep("CateyesProjectilePreview", Enum.RenderPriority.Camera.Value + 2, updateProjectilePreview)
 			projectileRenderBound = true
 		end
 	else
@@ -1288,6 +1393,12 @@ function Logic._installFeatureModules()
 		apply = applyProjectileVisualiser,
 		emit = emitState,
 	})
+	featureModules.SpearAim = Logic._fallbackToggleFeature({
+		getEnabled = function() return spearAimEnabled end,
+		setEnabled = function(value) spearAimEnabled = value end,
+		apply = Logic._refreshSpearAim,
+		emit = emitState,
+	})
 
 	featureModules.SkillCheck = Logic._loadFeatureModule("SkillCheck", nil, {
 		playerGui = PG,
@@ -1333,6 +1444,16 @@ end
 function Logic.toggleProjectileVisualiser()
 	Logic._installFeatureModules()
 	featureModules.ProjectileVisualiser.toggle()
+end
+
+function Logic.setSpearAimEnabled(on)
+	Logic._installFeatureModules()
+	featureModules.SpearAim.setEnabled(on)
+end
+
+function Logic.toggleSpearAim()
+	Logic._installFeatureModules()
+	featureModules.SpearAim.toggle()
 end
 
 function Logic.setSkillCheckEnabled(on)
@@ -1390,6 +1511,8 @@ function Logic.start()
 				Logic.toggleSkillCheck()
 			elseif input.KeyCode == Enum.KeyCode.H then
 				Logic.toggleProjectileVisualiser()
+			elseif input.KeyCode == Enum.KeyCode.J then
+				Logic.toggleSpearAim()
 			end
 		end
 	end))
@@ -1404,6 +1527,10 @@ function Logic.start()
 		Logic._watchProjectileCharacter(character)
 		setProjectileHolding(false, false)
 		Logic._refreshProjectileVisualiser()
+	end))
+	trackConnection(UserInputService.WindowFocusReleased:Connect(function()
+		setProjectileHolding(false, false)
+		stopSpearAim()
 	end))
 
 	task.spawn(function()
@@ -1436,6 +1563,7 @@ function Logic.destroy()
 	clearAllHighlights()
 	destroyProjectileVisuals()
 	stopProjectileRender()
+	stopSpearAim()
 	disconnectMapConnections()
 	clearMapCache()
 

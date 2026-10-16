@@ -83,6 +83,7 @@ globals.ViolenceDistrictLogic = {
 	setPathTreeEnabled = function(on) migrated = not on end, destroy = function() destroyed = true end,
 }
 local logic = assert(loadfile("features/logic.luau"))()
+print(assert(loadfile("scripts/test_spear_aim.luau"))()(logic))
 assert(migrated and destroyed, "Old path feature was not stopped during upgrade")
 assert(logic.setPathTreeEnabled == nil and logic.getState().pathTreeEnabled == nil, "Removed path API remains")
 assert(logic.getState().highlightsEnabled, "Upgrade lost the remaining feature state")

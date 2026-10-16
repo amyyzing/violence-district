@@ -20,6 +20,7 @@ return function()
 		{ "Highlights", "highlightsEnabled", logic.setHighlightsEnabled },
 		{ "SkillCheck", "skillCheckEnabled", logic.setSkillCheckEnabled },
 		{ "Projectile", "projectileVisualiserEnabled", logic.setProjectileVisualiserEnabled },
+		{ "SpearAim", "spearAimEnabled", logic.setSpearAimEnabled },
 	}
 	local ok, err = pcall(function()
 		expect(not panel.Features:FindFirstChild("PathTreeRow") and logic.setPathTreeEnabled == nil, "Path feature was not removed")

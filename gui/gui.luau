@@ -2,7 +2,8 @@ local LOGIC_KEY = "ViolenceDistrictLogic"
 local GUI_KEY = "ViolenceDistrictGui"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local LOGIC_VERSION = 79
+local LOGIC_VERSION = 80
+local PANEL_HEIGHT = 328
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -101,7 +102,7 @@ if not mounted and type(gethui) == "function" then
 end
 if not mounted then sg.Parent = PG end
 panel = make("Frame", "Panel", sg, {
-	Size = UDim2.fromOffset(348, 282), BackgroundColor3 = C.panel,
+	Size = UDim2.fromOffset(348, PANEL_HEIGHT), BackgroundColor3 = C.panel,
 	Position = previousGuiState and previousGuiState.position or UDim2.fromOffset(48, 80),
 	Visible = not previousGuiState or previousGuiState.enabled ~= false,
 })
@@ -161,13 +162,14 @@ end
 make("Frame", "Divider", panel, { Position = UDim2.fromOffset(20, 64), Size = UDim2.fromOffset(308, 1), BackgroundColor3 = C.line })
 
 local group = make("Frame", "Features", panel, {
-	Position = UDim2.fromOffset(20, 80), Size = UDim2.fromOffset(308, 138), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(20, 80), Size = UDim2.fromOffset(308, 184), BackgroundColor3 = C.surface,
 })
 corner(group, 10)
 local channels = {
 	{ id = "Highlights", title = "Highlights", hotkey = "Y", key = "highlightsEnabled", set = Logic.setHighlightsEnabled },
 	{ id = "SkillCheck", title = "Skill check", hotkey = "G", key = "skillCheckEnabled", set = Logic.setSkillCheckEnabled },
 	{ id = "Projectile", title = "Projectile preview", hotkey = "H", key = "projectileVisualiserEnabled", set = Logic.setProjectileVisualiserEnabled },
+	{ id = "SpearAim", title = "Spear aim", hotkey = "J", key = "spearAimEnabled", set = Logic.setSpearAimEnabled },
 }
 for index, channel in ipairs(channels) do
 	local row = button(group, channel.id .. "Row", "", 0, (index - 1) * 46, 308, 46)
@@ -193,7 +195,7 @@ for index, channel in ipairs(channels) do
 	end
 end
 
-local healingCounter = label(panel, "HealingCounter", "Heal —/100", 20, 232, 135, 34, 12, C.accent, Enum.Font.GothamMedium)
+local healingCounter = label(panel, "HealingCounter", "Heal —/100", 20, 278, 135, 34, 12, C.accent, Enum.Font.GothamMedium)
 healingCounter.TextXAlignment = Enum.TextXAlignment.Center
 local function updateHealingCounter()
 	if destroyed then return end
@@ -237,7 +239,7 @@ end)
 bindHealingCharacter(LP.Character)
 
 local modeGroup = make("Frame", "Mode", panel, {
-	Position = UDim2.fromOffset(152, 232), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(152, 278), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
 })
 corner(modeGroup, 9)
 local modeButtons = {}
@@ -265,11 +267,11 @@ local function fitPanel()
 	local viewport = sg.AbsoluteSize
 	if viewport.X <= 0 or viewport.Y <= 0 then return end
 	local inset = game:GetService("GuiService"):GetGuiInset()
-	scale.Scale = math.min(1, math.max(1, viewport.X - 16) / 348, math.max(1, viewport.Y - inset.Y - 16) / 282)
+	scale.Scale = math.min(1, math.max(1, viewport.X - 16) / 348, math.max(1, viewport.Y - inset.Y - 16) / PANEL_HEIGHT)
 	local x = panel.Position.X.Scale * viewport.X + panel.Position.X.Offset
 	local y = panel.Position.Y.Scale * viewport.Y + panel.Position.Y.Offset
 	panel.Position = UDim2.fromOffset(math.clamp(x, 8, math.max(8, viewport.X - 348 * scale.Scale - 8)),
-		math.clamp(y, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 282 * scale.Scale - 8)))
+		math.clamp(y, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - PANEL_HEIGHT * scale.Scale - 8)))
 	reopen.Position = UDim2.fromOffset(12, math.clamp(180, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 52)))
 end
 -- Modal only releases the pointer while this panel is visible.
@@ -313,7 +315,7 @@ local function minimize()
 	proxy.Position, proxy.ClipsDescendants = UDim2.fromOffset(center.X, center.Y), true
 	local children = proxy:GetChildren()
 	local content = make("CanvasGroup", "Content", proxy, {
-		Size = UDim2.fromOffset(348, 282), BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(348, PANEL_HEIGHT), BackgroundTransparency = 1,
 	})
 	for _, child in ipairs(children) do if child:IsA("GuiObject") then child.Parent = content end end
 	for _, object in ipairs(proxy:GetDescendants()) do

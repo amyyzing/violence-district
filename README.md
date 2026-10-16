@@ -8,9 +8,10 @@ The small indicator rotates and lights up when enabled.
 | Highlights | Y |
 | Skill check | G |
 | Projectile preview | H |
+| Spear aim | J |
 
-Choose **Normal** or **Perfect** beside **Skill mode**. Drag the title to move
-the panel. **Right Control** or the minus button hides it; the floating **CE**
+Choose **Normal** or **Perfect** beside the healing counter. Drag the title to move
+the panel. **Right Control** or the minimize button hides it; the floating **CE**
 button reopens it. The panel automatically fits smaller viewports.
 
 Skill checks react to needle rotation updates and use the game's full great-hit
@@ -27,6 +28,16 @@ Labels sit above the generator hitbox and scale with distance and camera zoom.
 They update with repair progress and disappear on completion, removal, or when
 Highlights is turned off. The fraction uses the game's 0–100 progress scale.
 Generator paths and the F hotkey have been removed.
+
+**Spear aim** starts off. Enable it with **J** or its row, then charge a Veil
+throw. It selects the standing survivor nearest the cursor on screen and keeps
+that target for the charge. The intercept uses the current charge speed,
+target root velocity, half gravity, velocity-first integration, and an estimated
+one-way network delay. The camera follows the launch direction until 0.15 seconds
+after release; switching weapons, losing focus, or disabling the feature releases
+it immediately. The feature never throws or sends a weapon remote for you.
+Targets that turn, accelerate, jump, or move behind obstacles can still be missed.
+No camera solution is applied when a target is unreachable at the current charge.
 
 The GUI uses maximum display order in CoreGui when supported by the executor,
 with a fallback to its hidden UI container or PlayerGui.
@@ -49,6 +60,10 @@ The standalone build lets you run local changes before pushing them.
 ## Checks
 
 - `node scripts/check_luau_syntax.mjs` checks source syntax.
+- `scripts/test_spear_aim.luau` checks interception against a separate stepwise
+  flight simulation, unreachable targets, cursor selection, and invalid targets.
+- `scripts/test_spear_aim_lifecycle.luau` uses a fake camera and render scheduler
+  to check charge/release speed, weapon switching, disabling, and cleanup.
 - `scripts/test_skill_check.luau` returns a test function accepting the
   skill-check factory. It uses isolated GUI fixtures and records input without
   sending keys to the game, including continuous rotations used by King's Scourge.
