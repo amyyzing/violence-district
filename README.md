@@ -127,7 +127,11 @@ from the held spear to the release point is cosmetic and does not alter physics.
 
 An October 16 live render probe found the Heartbeat-driven guide could trail the
 camera's horizontal aim by 6.45 degrees during turns. The guide now updates at
-camera render priority + 1 and unbinds when hidden, disabled, or destroyed.
+camera render priority + 1 and unbinds when charging ends, disabled, or destroyed.
 An observer immediately after that update measured a maximum difference of
 0.04 degrees across 990 frames, versus 6.45 across 1,123 baseline frames.
 This checks camera alignment; it does not prove exact impact prediction.
+
+The same round recorded an ordinary spear pinned to a generator's non-colliding
+`GeneratorBody`. Ordinary previews now stop on those bodies as well as solid
+parts; powered previews retain their existing geometry-piercing behavior.

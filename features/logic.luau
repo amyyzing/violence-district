@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 72
+local VERSION = 73
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -859,8 +859,10 @@ function Logic._projectileSegmentRaycast(origin, direction, params, piercing)
 			return result, nil
 		end
 
-		if not piercing and result.Instance:IsA("BasePart") and result.Instance.CanCollide then
-			return result, nil
+		if not piercing and result.Instance:IsA("BasePart") then
+			-- Live impactSpawn also pins ordinary spears to non-colliding generator bodies.
+			local generatorBody = result.Instance.Name == "GeneratorBody" and isGenerator(result.Instance.Parent)
+			if result.Instance.CanCollide or generatorBody then return result, nil end
 		end
 
 		local filter = params.FilterDescendantsInstances

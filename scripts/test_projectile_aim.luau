@@ -98,6 +98,18 @@ return function(capture)
 		expect(impact and impact.Instance == floor, "Curved path missed the floor")
 		expect(falling[#falling] == impact.Position and #falling < #points, "Trajectory continued past collision")
 		floor:Destroy()
+		local generator = Instance.new("Model")
+		generator.Name, generator.Parent = "Generator", fixtures
+		local body = part(generator, "GeneratorBody", origin + Vector3.new(0, 0, -2), Vector3.one)
+		body.CanCollide = false
+		local generatorParams = RaycastParams.new()
+		generatorParams.FilterType = Enum.RaycastFilterType.Exclude
+		local generatorHit = logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -4), generatorParams)
+		expect(generatorHit and generatorHit.Instance == body, "Ordinary spear ignored a non-colliding generator body")
+		local fullParams = RaycastParams.new()
+		fullParams.FilterType = Enum.RaycastFilterType.Exclude
+		expect(logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -4), fullParams, true) == nil, "Powered spear stopped at a generator body")
+		generator:Destroy()
 		local layers = Instance.new("Folder")
 		layers.Parent = fixtures
 		for index = 1, 9 do
