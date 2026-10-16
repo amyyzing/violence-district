@@ -107,6 +107,11 @@ The preview checks the Veil ability HUD before predicting the full charged
 throw. During its cooldown, a long hold stays at 142.5 speed. A ready full charge
 uses 165 and predicts through world geometry while still stopping at characters.
 
+The visible guide restores the early dotted, fading arc: 18 markers over the
+first 1.35 seconds of flight. The long four-second tail is hidden, while collision
+prediction still checks the full flight. Marker positions come from the same
+trajectory as the lines; this presentation does not exaggerate gravity or lift.
+
 The solver normalizes the input direction before applying speed, matching
 `ProjectileHandler`. Regression checks also verify both endpoints of every
 physical arc segment against the calculated flight positions. The short link
