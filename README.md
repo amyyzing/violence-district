@@ -133,6 +133,11 @@ An observer immediately after that update measured a maximum difference of
 0.04 degrees across 990 frames, versus 6.45 across 1,123 baseline frames.
 This checks camera alignment; it does not prove exact impact prediction.
 
-The same round recorded an ordinary spear pinned to a generator's non-colliding
-`GeneratorBody`. Ordinary previews now stop on those bodies as well as solid
-parts; powered previews retain their existing geometry-piercing behavior.
+Collision previews ignore fully transparent and non-colliding parts, including
+generator bodies and character hitboxes that meet either condition. This is a
+display filter; the game can still register impacts on some excluded parts.
+
+Arc lines, dots, and the smaller impact marker now use normal scene depth rather
+than drawing through walls. The projectile target highlight is also occluded.
+Ordinary trajectories stop at valid collisions; powered trajectories retain the
+game's wall piercing, with hidden portions obscured by world geometry.

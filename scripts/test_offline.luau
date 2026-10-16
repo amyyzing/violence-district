@@ -161,6 +161,8 @@ local scaledDirection = logic._projectileTrajectory(origin, direction * 3, 165, 
 assert((scaledDirection[#scaledDirection] - curve[#curve]).Magnitude < 0.00001, "Direction magnitude incorrectly changes launch speed")
 logic._setProjectileArc(curve, Vector3.new(1, 1, 1), Color3.fromRGB(255, 255, 255))
 local visuals = workspace:FindFirstChild("CateyesProjectileVisualiser")
+assert(not visuals.Arc1.AlwaysOnTop and visuals.Arc1.ZIndex == -1, "Arc still forces itself through walls")
+assert(not visuals.ArcPoint1.AlwaysOnTop and visuals.ArcPoint1.ZIndex == -1, "Arc markers still force themselves through walls")
 assert(visuals.Beam.Transparency == 1 and visuals.Beam.Length == 0, "Cosmetic connector is still visible")
 assert((visuals.Arc1.CFrame.Position - curve[1]).Magnitude < 0.00001, "First physical curve segment is missing")
 for index = 1, #curve - 1 do

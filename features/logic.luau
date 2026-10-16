@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 74
+local VERSION = 76
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -84,8 +84,8 @@ local K = {
 	PROJECTILE_PREVIEW_TIME = 1.35,
 	PROJECTILE_PREVIEW_DOTS = 18,
 	PROJECTILE_BEAM_THICKNESS = 3,
-	PROJECTILE_BEAM_ZINDEX = 8,
-	PROJECTILE_IMPACT_RADIUS = 0.7,
+	PROJECTILE_BEAM_ZINDEX = -1,
+	PROJECTILE_IMPACT_RADIUS = 0.25,
 	PROJECTILE_START_FORWARD = 3,
 	PROJECTILE_START_UP = 1.5,
 	PROJECTILE_TARGET_HL = "CateyesProjectileTargetHighlight",
@@ -850,19 +850,12 @@ function Logic._projectileSegmentRaycast(origin, direction, params, piercing)
 			return nil, nil
 		end
 
-		local characterModel = Logic._projectileCharacterModel(result.Instance)
-		if characterModel then
-			return result, characterModel
-		end
-
-		if not piercing and result.Instance == workspace.Terrain then
-			return result, nil
-		end
-
-		if not piercing and result.Instance:IsA("BasePart") then
-			-- Live impactSpawn also pins ordinary spears to non-colliding generator bodies.
-			local generatorBody = result.Instance.Name == "GeneratorBody" and isGenerator(result.Instance.Parent)
-			if result.Instance.CanCollide or generatorBody then return result, nil end
+		local part = result.Instance
+		local ignored = part:IsA("BasePart") and (part.Transparency >= 1 or not part.CanCollide)
+		if not ignored then
+			local characterModel = Logic._projectileCharacterModel(part)
+			if characterModel then return result, characterModel end
+			if not piercing then return result, nil end
 		end
 
 		local filter = params.FilterDescendantsInstances
@@ -909,7 +902,7 @@ function Logic._projectileImpactSphere()
 	projectileImpactAdornment = make("SphereHandleAdornment", {
 		Name = "Impact",
 		Adornee = Logic._ensureProjectileAdornmentRoot(),
-		AlwaysOnTop = true,
+		AlwaysOnTop = false,
 		ZIndex = K.PROJECTILE_BEAM_ZINDEX,
 		Radius = K.PROJECTILE_IMPACT_RADIUS,
 		Color3 = Color3.fromRGB(255, 232, 119),
@@ -927,8 +920,8 @@ function Logic._projectileBeam()
 	projectileBeamAdornment = make("LineHandleAdornment", {
 		Name = "Beam",
 		Adornee = Logic._ensureProjectileAdornmentRoot(),
-		AlwaysOnTop = true,
-		ZIndex = K.PROJECTILE_BEAM_ZINDEX - 1,
+		AlwaysOnTop = false,
+		ZIndex = K.PROJECTILE_BEAM_ZINDEX,
 		Length = 0,
 		Thickness = K.PROJECTILE_BEAM_THICKNESS,
 		Color3 = Color3.fromRGB(255, 232, 119),
@@ -1022,7 +1015,7 @@ function Logic._setProjectileArc(points, _visualOrigin, color)
 		if not node then
 			node = make("SphereHandleAdornment", {
 				Name = "ArcPoint" .. index, Adornee = Logic._ensureProjectileAdornmentRoot(),
-				AlwaysOnTop = true, ZIndex = K.PROJECTILE_BEAM_ZINDEX,
+				AlwaysOnTop = false, ZIndex = K.PROJECTILE_BEAM_ZINDEX,
 				Radius = 0.14, Parent = ensureProjectileFolder(),
 			})
 			projectileArcNodes[index] = node
@@ -1065,7 +1058,7 @@ function Logic._setProjectileTargetHighlight(model)
 	highlight.OutlineColor = K.PROJECTILE_TARGET_COLOR
 	highlight.FillTransparency = 0.25
 	highlight.OutlineTransparency = 0
-	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
 end
 
 local function updateProjectilePreview(deltaTime)

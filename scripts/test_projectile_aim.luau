@@ -15,7 +15,7 @@ return function(capture)
 	local function part(parent, name, position, size)
 		local object = Instance.new("Part")
 		object.Name, object.Position, object.Size = name, position, size
-		object.Anchored, object.CanCollide, object.Transparency = true, true, 1
+		object.Anchored, object.CanCollide, object.Transparency = true, true, 0
 		object.Parent = parent
 		return object
 	end
@@ -105,7 +105,7 @@ return function(capture)
 		local generatorParams = RaycastParams.new()
 		generatorParams.FilterType = Enum.RaycastFilterType.Exclude
 		local generatorHit = logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -4), generatorParams)
-		expect(generatorHit and generatorHit.Instance == body, "Ordinary spear ignored a non-colliding generator body")
+		expect(generatorHit == nil, "Ordinary preview stopped on a non-colliding generator body")
 		local fullParams = RaycastParams.new()
 		fullParams.FilterType = Enum.RaycastFilterType.Exclude
 		expect(logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -4), fullParams, true) == nil, "Powered spear stopped at a generator body")
@@ -117,15 +117,25 @@ return function(capture)
 			trigger.CanCollide = false
 		end
 		local wall = part(layers, "Wall", origin + Vector3.new(0, 0, -10), Vector3.new(4, 4, 0.1))
+		local invisible = part(layers, "InvisibleWall", origin + Vector3.new(0, 0, -9.5), Vector3.new(4, 4, 0.1))
+		invisible.Transparency = 1
 		local layerParams = RaycastParams.new()
 		layerParams.FilterType = Enum.RaycastFilterType.Exclude
 		local layeredHit = logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -12), layerParams)
-		expect(layeredHit and layeredHit.Instance == wall, "Skipped a solid wall behind nine non-colliding parts")
+		expect(layeredHit and layeredHit.Instance == wall, "Invisible or non-colliding parts blocked the solid wall behind them")
 		local target = Instance.new("Model")
 		target.Parent = layers
 		local targetHumanoid = Instance.new("Humanoid")
 		targetHumanoid.Parent = target
 		local targetPart = part(target, "Target", origin + Vector3.new(0, 0, -11), Vector3.one)
+		local hiddenHitbox = part(target, "HiddenHitbox", origin + Vector3.new(0, 0, -9.7), Vector3.new(4, 4, 0.1))
+		hiddenHitbox.Transparency = 1
+		local triggerHitbox = part(target, "TriggerHitbox", origin + Vector3.new(0, 0, -9.8), Vector3.new(4, 4, 0.1))
+		triggerHitbox.CanCollide = false
+		local visibleParams = RaycastParams.new()
+		visibleParams.FilterType = Enum.RaycastFilterType.Exclude
+		local visibleHit = logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -12), visibleParams)
+		expect(visibleHit and visibleHit.Instance == wall, "Excluded character hitboxes intercepted the preview")
 		local piercingParams = RaycastParams.new()
 		piercingParams.FilterType = Enum.RaycastFilterType.Exclude
 		local piercingHit, piercingTarget = logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -12), piercingParams, true)
@@ -157,6 +167,11 @@ return function(capture)
 		local visualOrigin = release + Vector3.new(0, 0, 2)
 		logic._setProjectileArc(points, visualOrigin, Color3.new(1, 1, 1))
 		local visuals = workspace.CateyesProjectileVisualiser
+		for _, object in ipairs(visuals:GetChildren()) do
+			if object:IsA("HandleAdornment") then
+				expect(not object.AlwaysOnTop and object.ZIndex == -1, "Arc adornment still renders through geometry")
+			end
+		end
 		expect(visuals.Beam.Transparency == 1, "Cosmetic connector is still visible")
 		expect(visuals.Beam.Length == 0, "Cosmetic connector still has length")
 		expect((visuals.Arc1.CFrame.Position - points[1]).Magnitude < 0.001, "The first physical curve segment was skipped")
