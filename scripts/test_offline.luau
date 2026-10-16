@@ -164,10 +164,13 @@ local visuals = workspace:FindFirstChild("CateyesProjectileVisualiser")
 assert(not visuals.Arc1.AlwaysOnTop and visuals.Arc1.ZIndex == -1, "Arc still forces itself through walls")
 assert(not visuals.ArcPoint1.AlwaysOnTop and visuals.ArcPoint1.ZIndex == -1, "Arc markers still force themselves through walls")
 assert(visuals.Beam.Transparency == 1 and visuals.Beam.Length == 0, "Cosmetic connector is still visible")
-assert((visuals.Arc1.CFrame.Position - curve[1]).Magnitude < 0.00001, "First physical curve segment is missing")
+assert((visuals.Arc1.CFrame.Position - Vector3.new(1, 1, 1)).Magnitude < 0.00001, "Visual lead-in is detached from the spear")
 for index = 1, #curve - 1 do
 	local beam = assert(visuals:FindFirstChild("Arc" .. index), "Physical arc segment missing")
-	assert((beam.CFrame.Position - curve[index]).Magnitude < 0.00001, "Drawn segment starts outside the calculated path")
-	assert((beam.CFrame.Position + beam.CFrame.LookVector * beam.Length - curve[index + 1]).Magnitude < 0.00001, "Drawn segment ends outside the calculated path")
+	local finish = beam.CFrame.Position + beam.CFrame.LookVector * beam.Length
+	if index >= 4 then assert((beam.CFrame.Position - curve[index]).Magnitude < 0.00001, "Visual lead-in moved the later flight path") end
+	if index < #curve - 1 then
+		assert((finish - visuals:FindFirstChild("Arc" .. (index + 1)).CFrame.Position).Magnitude < 0.00001, "Visual lead-in left a gap")
+	else assert((finish - curve[#curve]).Magnitude < 0.00001, "Visual lead-in moved the endpoint") end
 end
 print(string.format("PASS: path migration, label data, 16 free-flight cases, %d captured flights (new %.4f vs old %.4f studs), %d long-flight stops, first curve segment", #capture.flights, worst, coarseWorst, stopChecks))
