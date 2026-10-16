@@ -118,8 +118,9 @@ label(header, "Brand", "Cateyes", 0, 0, 220, 28, 23, C.text, Enum.Font.GothamBol
 local close = button(panel, "Close", "", 296, 20, 32, 32, C.surface)
 corner(close, 9)
 local minimizeIcon = make("Frame", "MinimizeIcon", close, {
-	Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(20, 20), BackgroundTransparency = 1,
+	Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(20, 20), BackgroundTransparency = 1,
 })
+make("UIScale", "Scale", minimizeIcon, { Scale = 0.8 })
 -- Four inward corners, matching the supplied minimize symbol without an asset download.
 for index, position in ipairs({ Vector2.new(0, 0), Vector2.new(12, 0), Vector2.new(12, 12), Vector2.new(0, 12) }) do
 	local segment = make("Frame", "Corner" .. index, minimizeIcon, {
