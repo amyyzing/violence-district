@@ -17,7 +17,7 @@ return function(guiSource)
 	local player = { Character = character(70, true), CharacterAdded = added.Event, CharacterRemoving = removing.Event }
 	function player:WaitForChild() return playerGui end
 	local state = { skillCheckMode = "Perfect" }
-	local logic = { Version = 71, Changed = changed.Event, start = function() end, getState = function() return state end }
+	local logic = { Version = 72, Changed = changed.Event, start = function() end, getState = function() return state end }
 	for _, name in ipairs({ "setHighlightsEnabled", "setSkillCheckEnabled", "setProjectileVisualiserEnabled", "setSkillCheckMode" }) do
 		logic[name] = function() end
 	end

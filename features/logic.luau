@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 71
+local VERSION = 72
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -135,7 +135,7 @@ local projectileBeamAdornment
 local projectileArcBeams = {}
 local projectileArcNodes = {}
 local projectileImpactAdornment
-local projectileHeartbeatConnection
+local projectileRenderBound = false
 local projectileThrowHolding = false
 local projectileInputHolding = false
 local projectileAnimationHolding = false
@@ -707,10 +707,10 @@ local function destroyProjectileVisuals()
 	end
 end
 
-local function stopProjectileHeartbeat()
-	if projectileHeartbeatConnection then
-		projectileHeartbeatConnection:Disconnect()
-		projectileHeartbeatConnection = nil
+local function stopProjectileRender()
+	if projectileRenderBound then
+		RunService:UnbindFromRenderStep("CateyesProjectilePreview")
+		projectileRenderBound = false
 	end
 end
 
@@ -1069,7 +1069,7 @@ end
 local function updateProjectilePreview(deltaTime)
 	if not projectilePreviewAllowed() then
 		clearProjectilePreview()
-		stopProjectileHeartbeat()
+		stopProjectileRender()
 		return
 	end
 
@@ -1107,12 +1107,14 @@ end
 
 function Logic._refreshProjectileVisualiser()
 	if projectilePreviewAllowed() then
-		if not projectileHeartbeatConnection then
-			projectileHeartbeatConnection = RunService.Heartbeat:Connect(updateProjectilePreview)
+		if not projectileRenderBound then
+			-- Draw from this frame's camera, rather than the previous Heartbeat's aim.
+			RunService:BindToRenderStep("CateyesProjectilePreview", Enum.RenderPriority.Camera.Value + 1, updateProjectilePreview)
+			projectileRenderBound = true
 		end
 	else
 		clearProjectilePreview()
-		stopProjectileHeartbeat()
+		stopProjectileRender()
 	end
 end
 
@@ -1465,7 +1467,7 @@ function Logic.destroy()
 	table.clear(featureModules)
 	clearAllHighlights()
 	destroyProjectileVisuals()
-	stopProjectileHeartbeat()
+	stopProjectileRender()
 	disconnectMapConnections()
 	clearMapCache()
 
