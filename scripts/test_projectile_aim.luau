@@ -59,6 +59,8 @@ return function(capture)
 		local points, result = logic._projectileTrajectory(origin, Vector3.new(0, 0, -1), 165, 98.1, params, 0.02)
 		expect(result == nil, "Empty trajectory reported an impact")
 		expect(points[1] == origin, "Physics origin moved")
+		local scaledDirection = logic._projectileTrajectory(origin, Vector3.new(0, 0, -3), 165, 98.1, params, 0.02)
+		expect((scaledDirection[#scaledDirection] - points[#points]).Magnitude < 0.001, "Direction magnitude changed the launch speed")
 		local simulated, velocity = origin, Vector3.new(0, 0, -165)
 		for _ = 1, 200 do
 			velocity = velocity + Vector3.new(0, -98.1 * 0.02, 0)
@@ -117,6 +119,12 @@ return function(capture)
 		expect((visuals.Beam.CFrame.Position + rayVector - points[1]).Magnitude < 0.001, "Cosmetic connector does not reach the physical release point")
 		expect((visuals.Arc1.CFrame.Position - points[1]).Magnitude < 0.001, "The first physical curve segment was skipped")
 		expect((visuals.Arc1.CFrame.Position + visuals.Arc1.CFrame.LookVector * visuals.Arc1.Length - points[2]).Magnitude < 0.001, "First physical segment misses its sample")
+		for index = 1, #points - 1 do
+			local beam = visuals:FindFirstChild("Arc" .. index)
+			expect(beam ~= nil, "Physical arc segment missing")
+			expect((beam.CFrame.Position - points[index]).Magnitude < 0.001, "Drawn segment starts outside the calculated flight path")
+			expect((beam.CFrame.Position + beam.CFrame.LookVector * beam.Length - points[index + 1]).Magnitude < 0.001, "Drawn segment ends outside the calculated flight path")
+		end
 		logic._setProjectileArc({ release, release + Vector3.new(0, 0, -1) }, visualOrigin, Color3.new(1, 1, 1))
 		for _, object in ipairs(visuals:GetChildren()) do
 			if object.Name:match("^Arc") and object.Name ~= "Arc1" then expect(object.Transparency == 1, "Shorter path left old segments visible") end

@@ -93,3 +93,8 @@ held spear directly to the 0.1-second sample, and samples the arc every 0.05
 seconds. Rendered-curve interpolation stayed within 0.05 studs of those flight
 traces. This validates the flight curve, not future moving-target hits or every
 collision surface; low-charge throws below the medium tier still need capture.
+
+The solver normalizes the input direction before applying speed, matching
+`ProjectileHandler`. Regression checks also verify both endpoints of every
+physical arc segment against the calculated flight positions. The short link
+from the held spear to the release point is cosmetic and does not alter physics.

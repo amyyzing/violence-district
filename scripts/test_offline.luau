@@ -138,8 +138,15 @@ for _, flight in ipairs(capture.flights) do
 end
 assert(coarseWorst > 0.05, "Capture no longer reproduces the coarse-curve regression")
 local curve = logic._projectileTrajectory(origin, direction, 165, 98.1, nil, 0.02)
+local scaledDirection = logic._projectileTrajectory(origin, direction * 3, 165, 98.1, nil, 0.02)
+assert((scaledDirection[#scaledDirection] - curve[#curve]).Magnitude < 0.00001, "Direction magnitude incorrectly changes launch speed")
 logic._setProjectileArc(curve, Vector3.new(1, 1, 1), Color3.fromRGB(255, 255, 255))
 local visuals = workspace:FindFirstChild("CateyesProjectileVisualiser")
 assert((visuals.Beam.CFrame.Position + visuals.Beam.CFrame.LookVector * visuals.Beam.Length - curve[1]).Magnitude < 0.00001, "Connector bypasses the release point")
 assert((visuals.Arc1.CFrame.Position - curve[1]).Magnitude < 0.00001, "First physical curve segment is missing")
+for index = 1, #curve - 1 do
+	local beam = assert(visuals:FindFirstChild("Arc" .. index), "Physical arc segment missing")
+	assert((beam.CFrame.Position - curve[index]).Magnitude < 0.00001, "Drawn segment starts outside the calculated path")
+	assert((beam.CFrame.Position + beam.CFrame.LookVector * beam.Length - curve[index + 1]).Magnitude < 0.00001, "Drawn segment ends outside the calculated path")
+end
 print(string.format("PASS: path migration, label data, 16 free-flight cases, %d captured flights (new %.4f vs old %.4f studs), first curve segment", #capture.flights, worst, coarseWorst))

@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 67
+local VERSION = 68
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -946,7 +946,7 @@ end
 
 function Logic._projectileTrajectory(origin, direction, speed, gravity, params, frameStep)
 	local points = { origin }
-	local velocity = direction * speed
+	local velocity = direction.Unit * speed
 	local previous = origin
 	local step = frameStep or 1 / 60
 	for index = 1, K.PROJECTILE_ARC_STEPS do
