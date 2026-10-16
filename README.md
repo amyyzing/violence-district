@@ -97,6 +97,14 @@ from launch directions by as much as 9 degrees. Capture data is stored in
 Input durations and retained power-label text are observational and can include
 cooldown or post-release time; they do not prove a different charge threshold.
 
+The same saved capture contains two long-flight stop endpoints. Horizontal
+travel implies flight times of about 3.52 and 3.61 seconds; their vertical drop
+implies acceleration of 98.28 and 98.17 studs/s². The offline checks compare
+those endpoints with the predicted curve within 1.5 studs. This supports half
+world gravity for that capture, but does not establish current-game collision
+timing or explain the reported visual mismatch. A fresh impact capture is still
+needed before changing the gravity constant.
+
 The preview now preserves the first physical segment instead of joining the
 held spear directly to the 0.1-second sample, and samples the arc every 0.05
 seconds. Rendered-curve interpolation stayed within 0.05 studs of those flight

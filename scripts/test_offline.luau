@@ -137,6 +137,25 @@ for _, flight in ipairs(capture.flights) do
 	coarseWorst = math.max(coarseWorst, (coarseShown - last).Magnitude)
 end
 assert(coarseWorst > 0.05, "Capture no longer reproduces the coarse-curve regression")
+-- Check the retained stop endpoints as well as the cosmetic flying model.
+-- Long flights make gravity measurable despite launch-origin/network error.
+local stopChecks = 0
+for _, launch in ipairs(capture.launches) do
+	local start, finish, aim = xyz(launch.origin), xyz(launch.stop), xyz(launch.direction).Unit
+	local delta = finish - start
+	local age = (delta.X * aim.X + delta.Z * aim.Z) / (launch.speed * (aim.X * aim.X + aim.Z * aim.Z))
+	if age > 3 and age < 4 then
+		local points = logic._projectileTrajectory(start, aim, launch.speed, capture.gravity * launch.gravityMultiplier, nil, 0)
+		local sample = age / 0.05
+		local index = math.floor(sample) + 1
+		local shown = points[index] + (points[index + 1] - points[index]) * (sample % 1)
+		-- No server frame times were captured. This is an approximate endpoint
+		-- check, not proof of exact collision timing or current-game behavior.
+		assert(math.abs(shown.Y - finish.Y) < 1.5, "Long-flight stop disagrees with predicted gravity")
+		stopChecks = stopChecks + 1
+	end
+end
+assert(stopChecks == 2, "Missing long-flight stop evidence")
 local curve = logic._projectileTrajectory(origin, direction, 165, 98.1, nil, 0.02)
 local scaledDirection = logic._projectileTrajectory(origin, direction * 3, 165, 98.1, nil, 0.02)
 assert((scaledDirection[#scaledDirection] - curve[#curve]).Magnitude < 0.00001, "Direction magnitude incorrectly changes launch speed")
@@ -149,4 +168,4 @@ for index = 1, #curve - 1 do
 	assert((beam.CFrame.Position - curve[index]).Magnitude < 0.00001, "Drawn segment starts outside the calculated path")
 	assert((beam.CFrame.Position + beam.CFrame.LookVector * beam.Length - curve[index + 1]).Magnitude < 0.00001, "Drawn segment ends outside the calculated path")
 end
-print(string.format("PASS: path migration, label data, 16 free-flight cases, %d captured flights (new %.4f vs old %.4f studs), first curve segment", #capture.flights, worst, coarseWorst))
+print(string.format("PASS: path migration, label data, 16 free-flight cases, %d captured flights (new %.4f vs old %.4f studs), %d long-flight stops, first curve segment", #capture.flights, worst, coarseWorst, stopChecks))
