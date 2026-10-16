@@ -66,7 +66,7 @@ The standalone build lets you run local changes before pushing them.
   and thin walls beside them. It does not send throws.
 
 The spear preview restores the earlier curved trajectory. It keeps the game's
-release offset for collision prediction.
+release offset for collision prediction and the visible arc start.
 Four live throws confirmed half gravity
 and the full/mid speeds of 165/142.5 studs per second. Direction follows the
 camera, matching the game's `Lookvectorgiver`, rather than converging on nearby
@@ -122,14 +122,11 @@ trajectory as the lines; this presentation does not exaggerate gravity or lift.
 
 The solver normalizes the input direction before applying speed, matching
 `ProjectileHandler`. Regression checks also verify both endpoints of every
-physical arc segment after the visual lead-in against calculated flight positions. The straight
+physical arc segment against the calculated flight positions. The straight
 cosmetic link from the held spear to the release point has been removed; only
 the sampled flight arc and its markers are visible.
-
-The visible arc begins at the forward end of the held spear's Hitbox, rather
-than its center or the detached physical spawn point. A cosmetic lead-in blends
-into the physical trajectory over the first 0.15 seconds. Collision calculations
-retain the game's launch origin, and the final endpoint is never shifted.
+The guide starts at the game's projectile spawn point. The held first-person
+weapon can sit elsewhere on screen; no visual offset is blended into flight samples.
 
 An October 16 live render probe found the Heartbeat-driven guide could trail the
 camera's horizontal aim by 6.45 degrees during turns. The guide now updates at

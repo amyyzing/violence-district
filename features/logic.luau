@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 77
+local VERSION = 78
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -960,11 +960,7 @@ function Logic._projectileVisualOrigin(camera, fallback)
 	-- The first-person spear is cosmetic; it must not move the physics origin.
 	local spear = camera and camera:FindFirstChild("Spear", true)
 	local hitbox = spear and spear:FindFirstChild("Hitbox")
-	if hitbox and hitbox:IsA("BasePart") then
-		local half = hitbox.CFrame.UpVector * hitbox.Size.Y * 0.5
-		local a, b = hitbox.Position + half, hitbox.Position - half
-		return (a - b):Dot(camera.CFrame.LookVector) >= 0 and a or b
-	end
+	if hitbox and hitbox:IsA("BasePart") then return hitbox.Position end
 	return fallback
 end
 
@@ -985,20 +981,12 @@ function Logic._projectileTrajectory(origin, direction, speed, gravity, params, 
 	return points
 end
 
-function Logic._setProjectileArc(points, visualOrigin, color)
+function Logic._setProjectileArc(points, _visualOrigin, color)
 	-- Keep the cloning template hidden. A straight link from the cosmetic
 	-- spear to the release point is not part of the projectile's flight.
 	Logic._projectileBeam().Transparency = 1
 	projectileBeamAdornment.Length = 0
 	local sampleTime = K.PROJECTILE_FLIGHT_TIME / K.PROJECTILE_ARC_STEPS
-	-- Attach only the visual lead-in to the held tip. Rejoin the physical arc
-	-- after three samples (0.15 seconds), and never move a collision endpoint.
-	local drawPoints = {}
-	local offset = (visualOrigin or points[1]) - points[1]
-	for index, point in ipairs(points) do
-		local weight = index == #points and 0 or math.max(0, 1 - (index - 1) / 3) ^ 2
-		drawPoints[index] = weight > 0 and point + offset * weight or point
-	end
 	for index = 1, #points - 1 do
 		local beam = projectileArcBeams[index]
 		if not beam then
@@ -1007,16 +995,16 @@ function Logic._setProjectileArc(points, visualOrigin, color)
 			beam.Parent = ensureProjectileFolder()
 			projectileArcBeams[index] = beam
 		end
-		local delta = drawPoints[index + 1] - drawPoints[index]
+		local delta = points[index + 1] - points[index]
 		beam.Length = delta.Magnitude
-		beam.CFrame = delta.Magnitude > 0.000001 and CFrame.lookAt(drawPoints[index], drawPoints[index + 1]) or CFrame.new(drawPoints[index])
+		beam.CFrame = delta.Magnitude > 0.000001 and CFrame.lookAt(points[index], points[index + 1]) or CFrame.new(points[index])
 		beam.Color3 = color
 		local time = index * sampleTime
 		beam.Transparency = time <= K.PROJECTILE_PREVIEW_TIME and (0.14 + time / K.PROJECTILE_PREVIEW_TIME * 0.35) or 1
 	end
 	for index = #points, #projectileArcBeams do projectileArcBeams[index].Transparency = 1 end
 	-- Restore the early preview's dotted, fading arc. Sample the existing
-	-- drawn segments, including the cosmetic lead-in, without changing gravity.
+	-- physical trajectory; the display must not add lift or extra gravity.
 	local visibleNodes = 0
 	for index = 1, K.PROJECTILE_PREVIEW_DOTS do
 		local sample = K.PROJECTILE_PREVIEW_TIME * index / K.PROJECTILE_PREVIEW_DOTS / sampleTime
@@ -1032,7 +1020,7 @@ function Logic._setProjectileArc(points, visualOrigin, color)
 			})
 			projectileArcNodes[index] = node
 		end
-		node.CFrame = CFrame.new(drawPoints[before] + (drawPoints[after] - drawPoints[before]) * (sample % 1))
+		node.CFrame = CFrame.new(points[before] + (points[after] - points[before]) * (sample % 1))
 		node.Color3 = color
 		node.Transparency = 0.08 + index / K.PROJECTILE_PREVIEW_DOTS * 0.42
 		visibleNodes = index

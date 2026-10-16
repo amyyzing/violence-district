@@ -6,7 +6,6 @@ return function(capture)
 	fixtures.Name = "CateyesAimTest"
 	fixtures.Parent = workspace
 	local camera = Instance.new("Camera")
-	camera.CFrame = CFrame.new()
 	local origin = Vector3.new(0, -10000, 0)
 	local checks = 0
 	local function expect(value, message)
@@ -159,9 +158,7 @@ return function(capture)
 		local spear = Instance.new("Model")
 		spear.Name, spear.Parent = "Spear", camera
 		local muzzle = part(spear, "Hitbox", origin + Vector3.new(1, 1, 2), Vector3.one)
-		muzzle.Size = Vector3.new(1, 8, 1)
-		muzzle.CFrame = CFrame.new(muzzle.Position) * CFrame.Angles(-math.pi / 2, 0, 0)
-		expect((logic._projectileVisualOrigin(camera, release) - (muzzle.Position + camera.CFrame.LookVector * 4)).Magnitude < 0.001, "Drawn origin did not attach to the forward spear tip")
+		expect(logic._projectileVisualOrigin(camera, release) == muzzle.Position, "Drawn origin did not attach to camera spear")
 		muzzle:Destroy()
 		expect(logic._projectileVisualOrigin(camera, release) == release, "Missing camera spear did not fall back safely")
 		local ignored = logic._projectileRaycastParams(game.Players.LocalPlayer.Character).FilterDescendantsInstances
@@ -177,24 +174,20 @@ return function(capture)
 		end
 		expect(visuals.Beam.Transparency == 1, "Cosmetic connector is still visible")
 		expect(visuals.Beam.Length == 0, "Cosmetic connector still has length")
-		expect((visuals.Arc1.CFrame.Position - visualOrigin).Magnitude < 0.001, "Visual lead-in is detached from the held spear")
-		expect((visuals.Arc3.CFrame.Position + visuals.Arc3.CFrame.LookVector * visuals.Arc3.Length - points[4]).Magnitude < 0.001, "Lead-in did not rejoin the physical arc")
+		expect((visuals.Arc1.CFrame.Position - points[1]).Magnitude < 0.001, "The first physical curve segment was skipped")
+		expect((visuals.Arc1.CFrame.Position + visuals.Arc1.CFrame.LookVector * visuals.Arc1.Length - points[2]).Magnitude < 0.001, "First physical segment misses its sample")
 		for index = 1, #points - 1 do
 			local beam = visuals:FindFirstChild("Arc" .. index)
 			expect(beam ~= nil, "Physical arc segment missing")
-			if index >= 4 then expect((beam.CFrame.Position - points[index]).Magnitude < 0.001, "Lead-in moved the later physical arc") end
-			local finish = beam.CFrame.Position + beam.CFrame.LookVector * beam.Length
-			if index < #points - 1 then
-				expect((finish - visuals:FindFirstChild("Arc" .. (index + 1)).CFrame.Position).Magnitude < 0.001, "Visual lead-in left a gap")
-			else expect((finish - points[#points]).Magnitude < 0.001, "Visual lead-in moved the endpoint") end
+			expect((beam.CFrame.Position - points[index]).Magnitude < 0.001, "Drawn segment starts outside the calculated flight path")
+			expect((beam.CFrame.Position + beam.CFrame.LookVector * beam.Length - points[index + 1]).Magnitude < 0.001, "Drawn segment ends outside the calculated flight path")
 		end
 		expect(visuals:FindFirstChild("ArcPoint18") ~= nil and visuals:FindFirstChild("ArcPoint19") == nil, "Early dotted-arc presentation was not restored")
-		expect((visuals.ArcPoint1.CFrame.Position - (visuals.Arc2.CFrame.Position + visuals.Arc2.CFrame.LookVector * visuals.Arc2.Length * 0.5)).Magnitude < 0.001, "First dot does not follow the visual lead-in")
+		expect((visuals.ArcPoint1.CFrame.Position - points[2]:Lerp(points[3], 0.5)).Magnitude < 0.001, "First dot is outside the physical trajectory")
 		expect((visuals.ArcPoint18.CFrame.Position - points[28]).Magnitude < 0.001, "Last dot does not mark 1.35 seconds of flight")
 		expect(visuals.ArcPoint1.Transparency < visuals.ArcPoint18.Transparency, "Arc dots do not fade with flight time")
 		expect(visuals.Arc27.Transparency < 1 and visuals.Arc28.Transparency == 1, "Long tail obscures the early curved preview")
 		logic._setProjectileArc({ release, release + Vector3.new(0, 0, -1) }, visualOrigin, Color3.new(1, 1, 1))
-		expect((visuals.Arc1.CFrame.Position + visuals.Arc1.CFrame.LookVector * visuals.Arc1.Length - (release + Vector3.new(0, 0, -1))).Magnitude < 0.001, "Nearby collision endpoint moved with the visual lead-in")
 		expect(visuals.ArcPoint18.Transparency == 1, "Shorter path left old arc dots visible")
 		for _, object in ipairs(visuals:GetChildren()) do
 			if object.Name:match("^Arc") and object.Name ~= "Arc1" then expect(object.Transparency == 1, "Shorter path left old segments visible") end
