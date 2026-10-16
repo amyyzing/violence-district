@@ -18,6 +18,10 @@ window. Perfect mode aims near its center; if a fast frame skips the great
 window, either mode takes a valid normal hit when possible. Frame stalls that
 skip both windows and executor input delays can still cause misses.
 
+The healing counter beside the mode buttons follows the character's live
+`HealProgress` attribute on a 0–100 scale, including Ambitious Medic progress.
+It shows 100/100 when fully healed and a dash when progress is unavailable.
+
 Highlights also show generator progress, for example `42.3/100 (42.3%)`.
 Labels sit above the generator hitbox and scale with distance and camera zoom.
 They update with repair progress and disappear on completion, removal, or when

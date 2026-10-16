@@ -43,6 +43,8 @@ local sg, panel
 local destroyed = false
 
 local connections, tweens = {}, {}
+local healingConnections = {}
+local healingCharacter
 local drag
 local C = {
 	panel = Color3.fromRGB(23, 25, 31), surface = Color3.fromRGB(32, 35, 43),
@@ -113,10 +115,25 @@ reopen.Visible = not panel.Visible
 
 local header = button(panel, "Title", "", 20, 14, 258, 38, C.panel)
 label(header, "Brand", "Cateyes", 0, 0, 220, 28, 23, C.text, Enum.Font.GothamBold)
-local close = button(panel, "Close", "-", 296, 20, 32, 32, C.surface)
-close.TextSize = 20
-close.TextColor3 = C.muted
+local close = button(panel, "Close", "", 296, 20, 32, 32, C.surface)
 corner(close, 9)
+local minimizeIcon = make("Frame", "MinimizeIcon", close, {
+	Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(20, 20), BackgroundTransparency = 1,
+})
+-- Four inward corners, matching the supplied minimize symbol without an asset download.
+for index, position in ipairs({ Vector2.new(0, 0), Vector2.new(12, 0), Vector2.new(12, 12), Vector2.new(0, 12) }) do
+	local segment = make("Frame", "Corner" .. index, minimizeIcon, {
+		Position = UDim2.fromOffset(position.X, position.Y), Size = UDim2.fromOffset(8, 8),
+		Rotation = (index - 1) * 90, BackgroundTransparency = 1,
+	})
+	for _, geometry in ipairs({ { 5, 0, 3, 8 }, { 0, 5, 8, 3 } }) do
+		local stroke = make("Frame", "Stroke", segment, {
+			Position = UDim2.fromOffset(geometry[1], geometry[2]), Size = UDim2.fromOffset(geometry[3], geometry[4]),
+			BackgroundColor3 = C.accent,
+		})
+		corner(stroke, 2)
+	end
+end
 make("Frame", "Divider", panel, { Position = UDim2.fromOffset(20, 64), Size = UDim2.fromOffset(308, 1), BackgroundColor3 = C.line })
 
 local group = make("Frame", "Features", panel, {
@@ -152,8 +169,50 @@ for index, channel in ipairs(channels) do
 	end
 end
 
+local healingCounter = label(panel, "HealingCounter", "Heal —/100", 20, 232, 120, 34, 12, C.accent, Enum.Font.GothamMedium)
+local function updateHealingCounter()
+	if destroyed then return end
+	local humanoid = healingCharacter and healingCharacter:FindFirstChildOfClass("Humanoid")
+	local progress = healingCharacter and healingCharacter:GetAttribute("HealProgress")
+	if humanoid and humanoid.Health >= humanoid.MaxHealth and humanoid.Health > 0 then
+		progress = 100
+	elseif not humanoid or humanoid.Health <= 0 then
+		progress = nil
+	end
+	if type(progress) == "number" then
+		progress = math.clamp(progress, 0, 100)
+		local amount = string.format("%.1f", progress):gsub("%.0$", "")
+		healingCounter.Text = "Heal " .. amount .. "/100"
+	else
+		healingCounter.Text = "Heal —/100"
+	end
+end
+local function bindHealingCharacter(character)
+	if destroyed then return end
+	for _, connection in ipairs(healingConnections) do connection:Disconnect() end
+	table.clear(healingConnections)
+	healingCharacter = character
+	if character then
+		table.insert(healingConnections, character:GetAttributeChangedSignal("HealProgress"):Connect(updateHealingCounter))
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			table.insert(healingConnections, humanoid.HealthChanged:Connect(updateHealingCounter))
+		else
+			table.insert(healingConnections, character.ChildAdded:Connect(function(child)
+				if not destroyed and healingCharacter == character and child:IsA("Humanoid") then bindHealingCharacter(character) end
+			end))
+		end
+	end
+	updateHealingCounter()
+end
+connect(LP.CharacterAdded, bindHealingCharacter)
+connect(LP.CharacterRemoving, function(character)
+	if healingCharacter == character then bindHealingCharacter(nil) end
+end)
+bindHealingCharacter(LP.Character)
+
 local modeGroup = make("Frame", "Mode", panel, {
-	Position = UDim2.fromOffset(86, 232), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(152, 232), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
 })
 corner(modeGroup, 9)
 local modeButtons = {}
@@ -237,8 +296,11 @@ function controller.destroy()
 	drag = nil
 	syncVisibility()
 	for _, connection in ipairs(connections) do connection:Disconnect() end
+	for _, connection in ipairs(healingConnections) do connection:Disconnect() end
 	for _, animation in pairs(tweens) do animation:Cancel() end
 	table.clear(connections)
+	table.clear(healingConnections)
+	healingCharacter = nil
 	table.clear(tweens)
 	sg:Destroy()
 	if globalState[GUI_KEY] == controller then globalState[GUI_KEY] = nil end
