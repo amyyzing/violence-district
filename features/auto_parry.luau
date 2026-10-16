@@ -2,11 +2,13 @@
 return function(context)
 	local feature = {}
 	local players, player = context.players, context.player
-	local connections, watchers, cues, history = {}, {}, {}, {}
+	local connections, watchers, cues, history, itemConnections = {}, {}, {}, {}, {}
 	local pending, nativeClient, stepConnection
 	local lastClientSearch = -math.huge
 	local now = context.clock or os.clock
 	local spawn = context.spawn or function(callback) task.spawn(callback) end
+	local delay = context.delay or function(seconds, callback) task.delay(seconds, callback) end
+	local generation = 0
 	local status = "Off"
 	local attackIds = { ["78935059863801"] = true, ["122812055447896"] = true }
 	local function report(text)
@@ -36,7 +38,12 @@ return function(context)
 		if now() - lastClientSearch < 0.5 then return nil end
 		lastClientSearch = now()
 		if type(getconnections) ~= "function" or type(getupvalues) ~= "function" then return nil end
-		for _, connection in ipairs(getconnections(context.input.InputBegan)) do
+		local folder = context.storage:FindFirstChild("Remotes")
+		folder = folder and folder:FindFirstChild("Items")
+		folder = folder and folder:FindFirstChild("Parrying Dagger")
+		local result = folder and folder:FindFirstChild("parryResult")
+		if not result then return nil end
+		for _, connection in pairs(getconnections(result.OnClientEvent)) do
 			if connection.Function then
 				local ok, values = pcall(getupvalues, connection.Function)
 				if ok then
@@ -52,12 +59,34 @@ return function(context)
 			end
 		end
 	end
+	local function warmClient()
+		generation = generation + 1
+		local token = generation
+		local function lookup(attempt)
+			if token ~= generation or not context.getEnabled() then return end
+			local found = feature._findClient()
+			if token ~= generation or not context.getEnabled() then return end
+			nativeClient = found
+			if found then
+				if next(cues) then
+					if not stepConnection then stepConnection = context.runService.Heartbeat:Connect(feature._step) end
+					feature._step()
+				end
+			elseif attempt < 3 then
+				delay(0.5, function() lookup(attempt + 1) end)
+			else report("Dagger client unavailable") end
+		end
+		spawn(function() lookup(1) end)
+	end
 	function feature._observe(killer, track, existing)
 		local name = track.Name:lower()
 		local id = track.Animation and track.Animation.AnimationId:match("%d+")
 		if name ~= "attack" and name ~= "lungehold" and not attackIds[id] then return end
 		local age = existing and track.TimePosition / math.max(math.abs(track.Speed), 0.001) or 0
-		cues[killer] = { track = track, character = killer.Character, at = now() - age, observedAt = now(), used = false }
+		local character = killer.Character
+		cues[killer] = { track = track, character = character, at = now() - age, observedAt = now(), used = false,
+			root = character and character:FindFirstChild("HumanoidRootPart"),
+			humanoid = character and character:FindFirstChildOfClass("Humanoid") }
 		if not stepConnection then stepConnection = context.runService.Heartbeat:Connect(feature._step) end
 		feature._step()
 	end
@@ -72,17 +101,25 @@ return function(context)
 		report(string.format("Call %.0fms | reply %.0fms | %s", sample.localMs, sample.replyMs,
 			sample.success and "parried" or "not parried"))
 	end
+	local function readyAtRange(killer, client, enemy, delta)
+		if delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z > 225 then return false end
+		if enemy:GetAttribute("IsStunned") then return false end
+		-- Consume this cue even if native validation rejects it: never retry every frame.
+		cues[killer] = nil
+		if not equipped(client) then report("No equipped dagger") return false end
+		if client.isParryOnCooldown or client.isParryResolving or client.isSilenced then return false end
+		local ok, ready = pcall(client.CanUse, client)
+		if not ok or not ready then
+			if #history == 0 then report("Dagger not ready") end
+			return false
+		end
+		return true
+	end
 	function feature._step()
 		if not context.getEnabled() then return end
 		if not pending and next(cues) == nil then stopStepping() return end
 		if pending then
-			if now() - (pending.callAt or pending.cueAt) > 3 then
-				pending.timeout = true
-				history[#history + 1] = pending
-				if #history > 12 then table.remove(history, 1) end
-				pending = nil
-				report("No parry result within 3s")
-			end
+			stopStepping()
 			return
 		end
 		if not player.Team or not player.Team.Name:lower():match("^survivor") then
@@ -91,9 +128,10 @@ return function(context)
 			report("Survivors only")
 			return
 		end
+		local client = nativeClient
+		if not client then stopStepping() return end
 		local character = player.Character
-		local root = character and character:FindFirstChild("HumanoidRootPart")
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local root, humanoid = client.rootPart, client.humanoid
 		if not root or not humanoid or humanoid.Health <= 0 then
 			table.clear(cues)
 			stopStepping()
@@ -101,45 +139,44 @@ return function(context)
 		end
 		for killer, cue in pairs(cues) do
 			local enemy = killer.Character
-			local enemyRoot = enemy and enemy:FindFirstChild("HumanoidRootPart")
-			local enemyHumanoid = enemy and enemy:FindFirstChildOfClass("Humanoid")
+			local enemyRoot, enemyHumanoid = cue.root, cue.humanoid
 			local age = now() - cue.at
 			if cue.used or enemy ~= cue.character or age > 0.8 or not cue.track.IsPlaying or not enemyRoot then
 				cues[killer] = nil
-			elseif not cue.used and killer.Team and killer.Team.Name == "Killer"
-				and enemyHumanoid and enemyHumanoid.Health > 0 and not enemy:GetAttribute("IsStunned")
-				and (enemyRoot.Position - root.Position).Magnitude <= 15 then
-				-- Native readiness checks and executor scans only run for an actual nearby threat.
-				if not character:FindFirstChild("Parrying Dagger", true) then report("No equipped dagger") return end
-				local client = feature._findClient()
-				if not client then report("Dagger client unavailable") return end
-				local ok, ready = pcall(client.CanUse, client)
-				if not ok or not ready then
-					if #history == 0 then report(client.isParryOnCooldown and "Dagger cooldown" or "Dagger not ready") end
+			elseif killer.Team and killer.Team.Name == "Killer" and enemyHumanoid and enemyHumanoid.Health > 0 then
+				local delta = enemyRoot.Position - root.Position
+				if readyAtRange(killer, client, enemy, delta) then
+					local sample = { killer = killer.Name, cueAt = cue.observedAt, distance = delta.Magnitude }
+					pending = sample
+					stopStepping()
+					spawn(function()
+						if not context.getEnabled() or pending ~= sample or not equipped(client) then
+							if pending == sample then pending = nil end
+							return
+						end
+						sample.callAt = now()
+						sample.localMs = (sample.callAt - sample.cueAt) * 1000
+						delay(3, function()
+							if pending ~= sample then return end
+							sample.timeout = true
+							history[#history + 1] = sample
+							if #history > 12 then table.remove(history, 1) end
+							pending = nil
+							report("No parry result within 3s")
+						end)
+						report(string.format("Call %.0fms | awaiting result", sample.localMs))
+						local accepted, err = pcall(client.Parry, client)
+						if not accepted and pending == sample then
+							pending = nil
+							sample.error = tostring(err)
+							report("Native parry failed")
+						elseif pending == sample and not client.isParryResolving then
+							pending = nil
+							report("Native parry not accepted")
+						end
+					end)
 					return
 				end
-				cue.used = true
-				local sample = { killer = killer.Name, cueAt = cue.observedAt, distance = (enemyRoot.Position - root.Position).Magnitude }
-				pending = sample
-				spawn(function()
-					if not context.getEnabled() or pending ~= sample or not equipped(client) then
-						if pending == sample then pending = nil end
-						return
-					end
-					sample.callAt = now()
-					sample.localMs = (sample.callAt - sample.cueAt) * 1000
-					report(string.format("Call %.0fms | awaiting result", sample.localMs))
-					local accepted, err = pcall(client.Parry, client)
-					if not accepted and pending == sample then
-						pending = nil
-						sample.error = tostring(err)
-						report("Native parry failed")
-					elseif pending == sample and not client.isParryResolving then
-						pending = nil
-						report("Native parry not accepted")
-					end
-				end)
-				return
 			end
 		end
 		if next(cues) == nil then stopStepping() end
@@ -182,14 +219,44 @@ return function(context)
 		if other.Character then bind(other.Character) end
 	end
 	local function stop()
+		generation = generation + 1
 		stopStepping()
 		disconnect(connections)
+		disconnect(itemConnections)
 		local others = {}
 		for other in pairs(watchers) do others[#others + 1] = other end
 		for _, other in ipairs(others) do unwatch(other) end
 		table.clear(cues)
-		pending, nativeClient = nil, nil
+		pending = nil
 		lastClientSearch = -math.huge
+	end
+	local function bindItem(character)
+		disconnect(itemConnections)
+		generation = generation + 1
+		pending = nil
+		if not equipped(nativeClient) then nativeClient = nil end
+		lastClientSearch = -math.huge
+		table.clear(cues)
+		stopStepping()
+		local refresh = 0
+		connect(itemConnections, character.DescendantAdded, function(item)
+			if item.Name == "Parrying Dagger" or item.Name == "Parry Dagger" then
+				refresh = refresh + 1
+				local token = refresh
+				delay(0.1, function()
+					if context.getEnabled() and token == refresh and player.Character == character then warmClient() end
+				end)
+			end
+		end)
+		connect(itemConnections, character.DescendantRemoving, function(item)
+			if item.Name == "Parrying Dagger" or (nativeClient and item == nativeClient.tool) then
+				generation = generation + 1
+				nativeClient = nil
+				table.clear(cues)
+				stopStepping()
+			end
+		end)
+		warmClient()
 	end
 	local function start()
 		report("Watching attacks")
@@ -200,11 +267,8 @@ return function(context)
 		if result then connect(connections, result.OnClientEvent, feature._result) end
 		connect(connections, players.PlayerAdded, watch)
 		connect(connections, players.PlayerRemoving, unwatch)
-		connect(connections, player.CharacterAdded, function()
-			pending, nativeClient = nil, nil
-			lastClientSearch = -math.huge
-			table.clear(cues)
-		end)
+		connect(connections, player.CharacterAdded, bindItem)
+		if player.Character then bindItem(player.Character) end
 		for _, other in ipairs(players:GetPlayers()) do watch(other) end
 		feature._step()
 	end
@@ -216,8 +280,11 @@ return function(context)
 		context.emit()
 	end
 	function feature.toggle() feature.setEnabled(not context.getEnabled()) end
-	function feature.getDiagnostics() return { status = status, pending = pending, history = history } end
-	function feature.destroy() stop() end
+	function feature.getDiagnostics()
+		return { status = status, pending = pending, history = history,
+			clientBound = equipped(nativeClient) == true, monitoring = stepConnection ~= nil }
+	end
+	function feature.destroy() stop() nativeClient = nil end
 	if context.getEnabled() then start() end
 	return feature
 end

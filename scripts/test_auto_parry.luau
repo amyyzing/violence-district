@@ -24,7 +24,7 @@ return function(factory)
 	local function character(x)
 		local root = { Position = Vector3.new(x, 0, 0) }
 		local humanoid = { Health = 100, FindFirstChildOfClass = function() end }
-		local model = { DescendantAdded = signal(), dagger = true, stunned = false }
+		local model = { DescendantAdded = signal(), DescendantRemoving = signal(), dagger = true, stunned = false }
 		function model:FindFirstChild(name)
 			if name == "HumanoidRootPart" then return root end
 			if name == "Parrying Dagger" and self.dagger then return {} end
@@ -33,7 +33,7 @@ return function(factory)
 		function model:GetAttribute(name) return name == "IsStunned" and self.stunned end
 		return model, root, humanoid
 	end
-	local localCharacter = character(0)
+	local localCharacter, localRoot, localHumanoid = character(0)
 	local enemy, enemyRoot, enemyHumanoid = character(16)
 	local player = { Name = "Local", Character = localCharacter, Team = { Name = "Survivors" }, CharacterAdded = signal() }
 	local killer = { Name = "Killer", Character = enemy, Team = { Name = "Killer" }, CharacterAdded = signal() }
@@ -41,31 +41,44 @@ return function(factory)
 	function killer:GetPropertyChangedSignal() return teamChanged end
 	local players = { PlayerAdded = signal(), PlayerRemoving = signal(), GetPlayers = function() return { player, killer } end }
 	local reply, heartbeat = signal(), signal()
+	local lookupReply = reply
 	local folder = { FindFirstChild = function(self, name)
-		if name == "parryResult" then return { OnClientEvent = reply } end
+		if name == "parryResult" then return { OnClientEvent = lookupReply } end
 		return self
 	end }
-	local client = { player = player, character = localCharacter, blocked = false, isParryResolving = false }
+	local client = { player = player, character = localCharacter, rootPart = localRoot, humanoid = localHumanoid,
+		blocked = false, isParryResolving = false }
 	client.tool = { IsDescendantOf = function(_, model) return model == localCharacter and localCharacter.dagger end }
 	local readinessChecks, clientSearches = 0, 0
 	function client:CanUse() readinessChecks = readinessChecks + 1 return not self.blocked and not self.isParryResolving end
 	function client:Parry() calls = calls + 1 self.isParryResolving = true end
 	local text, deferred, queue = "", false, {}
 	local input = {}
+	local timers = {}
+	local function runTimers()
+		for index = #timers, 1, -1 do
+			if timers[index].at <= clock then
+				local timer = table.remove(timers, index)
+				timer.callback()
+			end
+		end
+	end
 	local feature = factory({
 		players = players, player = player, input = input, storage = folder,
 		runService = { Heartbeat = heartbeat }, clock = function() return clock end,
 		spawn = function(callback) if deferred then queue[#queue + 1] = callback else callback() end end,
+		delay = function(seconds, callback) timers[#timers + 1] = { at = clock + seconds, callback = callback } end,
 		getEnabled = function() return enabled end, setEnabled = function(value) enabled = value end,
 		report = function(value) text = value end, emit = function() end,
 	})
 	local function expect(value, message) assert(value, message) checks = checks + 1 end
 	if type(getconnections) == "function" and type(getupvalues) == "function" then
 		local event = Instance.new("BindableEvent")
-		input.InputBegan = event.Event
+		lookupReply = event.Event
 		local connection = event.Event:Connect(function() return client end)
 		local found = feature._findClient()
 		connection:Disconnect() event:Destroy()
+		lookupReply = reply
 		expect(found == client, "Could not discover the native-client callback upvalue")
 	end
 	feature._findClient = function() clientSearches = clientSearches + 1 return client end
@@ -81,10 +94,11 @@ return function(factory)
 	expect(calls == 0 and heartbeat:count() == 0, "Disabled feature subscribed or activated")
 	feature.setEnabled(true)
 	expect(heartbeat:count() == 0, "Idle enable installed a Heartbeat loop")
+	local setupSearches = clientSearches
 	feature.setEnabled(true)
 	expect(heartbeat:count() == 0, "Repeated idle enable installed a Heartbeat loop")
 	for _ = 1, 1000 do heartbeat:Fire() end
-	expect(clientSearches == 0 and readinessChecks == 0, "Idle feature searched callbacks or checked native readiness")
+	expect(clientSearches == setupSearches and readinessChecks == 0, "Idle feature searched callbacks or checked native readiness")
 	killer.Team.Name = "Survivors" teamChanged:Fire()
 	expect(enemy.DescendantAdded:count() == 0, "Survivor retained character animation monitoring")
 	killer.Team.Name = "Killer" teamChanged:Fire()
@@ -93,12 +107,13 @@ return function(factory)
 	expect(calls == 0, "Non-attack animation triggered parry")
 	feature._observe(killer, track())
 	expect(calls == 0, "Killer outside 15 studs triggered parry")
-	expect(clientSearches == 0 and readinessChecks == 0, "Distant attack performed expensive native checks")
+	expect(clientSearches == setupSearches and readinessChecks == 0, "Distant attack performed expensive native checks")
 	expect(heartbeat:count() == 1, "Attack cue did not install range monitoring")
 	enemyRoot.Position = Vector3.new(15, 0, 0)
 	clock = clock + 0.02
 	heartbeat:Fire()
 	expect(calls == 1 and client.isParryResolving, "Entering 15 studs during wind-up did not activate native client")
+	expect(heartbeat:count() == 0, "Pending result retained a frame loop")
 	expect(math.abs(feature.getDiagnostics().pending.localMs - 20) < 0.00001, "Cue-to-call timing is incorrect")
 	heartbeat:Fire()
 	expect(calls == 1, "Pending request repeated parry")
@@ -111,11 +126,16 @@ return function(factory)
 	expect(calls == 1, "Same attack triggered twice")
 	expect(heartbeat:count() == 0, "Resolved cue retained the Heartbeat loop")
 	client.blocked = true
+	local beforeChecks, beforeSearches = readinessChecks, clientSearches
 	feature._observe(killer, track("lungehold"))
 	expect(calls == 1, "Blocked native dagger was activated")
+	for _ = 1, 1000 do heartbeat:Fire() end
+	expect(readinessChecks == beforeChecks + 1 and clientSearches == beforeSearches,
+		"Nearby rejected cue repeatedly checked native readiness or searched callbacks")
+	expect(heartbeat:count() == 0, "Nearby rejected cue retained a frame loop")
 	client.blocked = false
 	localCharacter.dagger = false
-	heartbeat:Fire()
+	feature._observe(killer, track())
 	expect(calls == 1 and text == "No equipped dagger", "Missing dagger did not block activation")
 	localCharacter.dagger = true
 	clock = clock + 0.81
@@ -143,7 +163,7 @@ return function(factory)
 	clock = clock + 0.1 result(false)
 	expect(feature.getDiagnostics().history[2].success == false, "Failed parry reported success")
 	feature._observe(killer, track())
-	clock = clock + 3.1 heartbeat:Fire()
+	clock = clock + 3.1 runTimers()
 	expect(feature.getDiagnostics().pending == nil and text == "No parry result within 3s", "Missing reply retained pending request")
 	client.isParryResolving = false
 	deferred = true

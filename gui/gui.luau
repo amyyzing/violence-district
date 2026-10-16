@@ -2,7 +2,7 @@ local LOGIC_KEY = "ViolenceDistrictLogic"
 local GUI_KEY = "ViolenceDistrictGui"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local LOGIC_VERSION = 87
+local LOGIC_VERSION = 88
 local PANEL_HEIGHT = 398
 
 local Players = game:GetService("Players")
