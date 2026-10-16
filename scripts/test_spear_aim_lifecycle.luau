@@ -49,6 +49,15 @@ return function(source)
 		expect(aim and aim.direction and aim.speed == 142.5, "Charge did not produce medium-speed intercept")
 		expect((camera.CFrame.LookVector - aim.direction).Magnitude < 0.0001, "Fake camera did not follow launch direction")
 		expect(bindings.CateyesSpearAim.priority == Enum.RenderPriority.Camera.Value + 1, "Aim uses incorrect camera priority")
+		local targetRoot = target.HumanoidRootPart
+		targetRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 16)
+		targetRoot.Position = targetRoot.Position + Vector3.new(-1.6, 0, 0)
+		task.wait(0.1)
+		bindings.CateyesSpearAim.callback(1 / 60)
+		local moving = logic._spearAimDebug
+		expect(moving.velocity.X < -5 and math.abs(moving.velocity.Z) < 0.001,
+			"Stale assembly velocity overrode observed sideways movement")
+		expect(moving.point.X < targetRoot.Position.X, "Predicted point did not lead in the observed velocity direction")
 		animation("93136435416899")
 		bindings.CateyesSpearAim.callback(1 / 60)
 		expect(logic._spearAimDebug.speed == 142.5, "Release changed medium shot to full speed")

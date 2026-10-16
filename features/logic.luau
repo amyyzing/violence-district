@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 80
+local VERSION = 81
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -880,10 +880,27 @@ function Logic._selectSpearAimTarget(camera, mouse, players)
 	return closest
 end
 
+function Logic._spearMotionVelocity(sample, position, now, grounded)
+	local elapsed = sample.time and now - sample.time or 0
+	if not sample.position or elapsed > 0.25 or elapsed < 0 then
+		sample.position, sample.time, sample.velocity = position, now, Vector3.zero
+	elseif elapsed >= 0.06 then
+		local movement = position - sample.position
+		-- Do not lead across teleports or replication corrections.
+		sample.velocity = movement.Magnitude <= 100 * elapsed and movement / elapsed or Vector3.zero
+		sample.position, sample.time = position, now
+	end
+	local velocity = sample.velocity or Vector3.zero
+	if grounded then velocity = Vector3.new(velocity.X, 0, velocity.Z) end
+	return velocity
+end
+
+local spearAimMotion
 local function stopSpearAim()
 	if spearAimBound then RunService:UnbindFromRenderStep("CateyesSpearAim") end
 	spearAimBound, spearAimTarget, spearAimReleaseUntil = false, nil, 0
 	Logic._spearAimDebug = nil
+	spearAimMotion = nil
 end
 
 local function updateSpearAim(deltaTime)
@@ -902,13 +919,16 @@ local function updateSpearAim(deltaTime)
 	local origin = Logic._projectileStartPosition(character)
 	if not origin then return end
 	if projectileThrowHolding then local _, _, _, speed = projectilePowerState() spearAimSpeed = speed end
-	local velocity = root.AssemblyLinearVelocity
-	if targetHumanoid.FloorMaterial ~= Enum.Material.Air then velocity = Vector3.new(velocity.X, 0, velocity.Z) end
+	if not spearAimMotion or spearAimMotion.root ~= root then spearAimMotion = { root = root } end
+	-- Remote AssemblyLinearVelocity can remain stale while the character moves in a different direction.
+	local velocity = Logic._spearMotionVelocity(spearAimMotion, root.Position, os.clock(),
+		targetHumanoid.FloorMaterial ~= Enum.Material.Air)
 	local ok, ping = pcall(function() return LP:GetNetworkPing() end)
 	local latency = ok and math.clamp(ping * 0.5, 0, 0.25) or 0
 	local direction, time, point = Logic._spearIntercept(origin, torso.Position, velocity, spearAimSpeed,
 		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, deltaTime, latency)
-	Logic._spearAimDebug = { target = spearAimTarget, direction = direction, flightTime = time, point = point, speed = spearAimSpeed }
+	Logic._spearAimDebug = { target = spearAimTarget, direction = direction, flightTime = time, point = point,
+		speed = spearAimSpeed, velocity = velocity }
 	if direction then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, camera.CFrame.Position + direction) end
 end
 

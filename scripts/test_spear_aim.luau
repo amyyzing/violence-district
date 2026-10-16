@@ -4,6 +4,24 @@ return function(logic)
 	local checks = 0
 	local function expect(value, message) assert(value, message) checks = checks + 1 end
 	local origin = Vector3.new(0, 3, 0)
+	local sample = {}
+	expect(logic._spearMotionVelocity(sample, origin, 1, true).Magnitude == 0, "Unsampled motion invented a velocity")
+	local right = origin + Vector3.new(1.6, 0, 0)
+	expect((logic._spearMotionVelocity(sample, right, 1.1, true) - Vector3.new(16, 0, 0)).Magnitude < 0.0001,
+		"Observed sideways motion did not produce sideways velocity")
+	local left = right - Vector3.new(1.6, 0, 0)
+	expect((logic._spearMotionVelocity(sample, left, 1.2, true) - Vector3.new(-16, 0, 0)).Magnitude < 0.0001,
+		"Direction reversal retained the old velocity")
+	expect(logic._spearMotionVelocity(sample, left, 1.3, true).Magnitude == 0, "Stopped target retained movement lead")
+	expect(logic._spearMotionVelocity(sample, left + Vector3.new(100, 0, 0), 1.4, true).Magnitude == 0,
+		"Teleport produced an extreme lead")
+	expect(logic._spearMotionVelocity(sample, left, 2, true).Magnitude == 0, "Stale sample produced a velocity")
+	local air = {}
+	logic._spearMotionVelocity(air, origin, 1, false)
+	expect(math.abs(logic._spearMotionVelocity(air, origin + Vector3.new(0, 1, 0), 1.1, false).Y - 10) < 0.0001,
+		"Airborne vertical velocity was discarded")
+	expect(logic._spearMotionVelocity(air, origin + Vector3.new(0, 1, 0), 1.11, true).Y == 0,
+		"Grounded prediction retained vertical replication noise")
 	for _, case in ipairs({
 		{ Vector3.new(0, 3, -50), Vector3.zero, 165 },
 		{ Vector3.new(0, 3, -50), Vector3.new(21, 0, 0), 165 },
