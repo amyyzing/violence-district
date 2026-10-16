@@ -131,9 +131,10 @@ for _, flight in ipairs(capture.flights) do
 	local error = (shown - last).Magnitude
 	worst = math.max(worst, error)
 	assert(error < 0.05, "Drawn curve deviates from captured flying spear by over 0.05 studs")
-	local coarseIndex = math.floor(flight.seconds / (step * 2)) * 2 + 1
-	local coarseFraction = (flight.seconds - (coarseIndex - 1) * step) / (step * 2)
-	local coarseShown = points[coarseIndex] + (points[coarseIndex + 2] - points[coarseIndex]) * coarseFraction
+	local stride = math.floor(0.1 / step + 0.5)
+	local coarseIndex = math.floor(flight.seconds / (step * stride)) * stride + 1
+	local coarseFraction = (flight.seconds - (coarseIndex - 1) * step) / (step * stride)
+	local coarseShown = points[coarseIndex] + (points[coarseIndex + stride] - points[coarseIndex]) * coarseFraction
 	coarseWorst = math.max(coarseWorst, (coarseShown - last).Magnitude)
 end
 assert(coarseWorst > 0.05, "Capture no longer reproduces the coarse-curve regression")
@@ -146,7 +147,7 @@ for _, launch in ipairs(capture.launches) do
 	local age = (delta.X * aim.X + delta.Z * aim.Z) / (launch.speed * (aim.X * aim.X + aim.Z * aim.Z))
 	if age > 3 and age < 4 then
 		local points = logic._projectileTrajectory(start, aim, launch.speed, capture.gravity * launch.gravityMultiplier, nil, 0)
-		local sample = age / 0.05
+		local sample = age / (4 / (#points - 1))
 		local index = math.floor(sample) + 1
 		local shown = points[index] + (points[index + 1] - points[index]) * (sample % 1)
 		-- No server frame times were captured. This is an approximate endpoint
@@ -162,7 +163,7 @@ assert((scaledDirection[#scaledDirection] - curve[#curve]).Magnitude < 0.00001, 
 logic._setProjectileArc(curve, Vector3.new(1, 1, 1), Color3.fromRGB(255, 255, 255))
 local visuals = workspace:FindFirstChild("CateyesProjectileVisualiser")
 assert(not visuals.Arc1.AlwaysOnTop and visuals.Arc1.ZIndex == -1, "Arc still forces itself through walls")
-assert(not visuals.ArcPoint1.AlwaysOnTop and visuals.ArcPoint1.ZIndex == -1, "Arc markers still force themselves through walls")
+assert(visuals:FindFirstChild("ArcPoint1") == nil, "Dotted markers were not removed")
 assert(visuals.Beam.Transparency == 1 and visuals.Beam.Length == 0, "Cosmetic connector is still visible")
 assert((visuals.Arc1.CFrame.Position - curve[1]).Magnitude < 0.00001, "First physical curve segment is missing")
 for index = 1, #curve - 1 do

@@ -115,16 +115,16 @@ The preview checks the Veil ability HUD before predicting the full charged
 throw. During its cooldown, a long hold stays at 142.5 speed. A ready full charge
 uses 165 and predicts through world geometry while still stopping at characters.
 
-The visible guide restores the early dotted, fading arc: 18 markers over the
-first 1.35 seconds of flight. The long four-second tail is hidden, while collision
-prediction still checks the full flight. Marker positions come from the same
-trajectory as the lines; this presentation does not exaggerate gravity or lift.
+The visible guide is a continuous fading line over the first 1.35 seconds of
+flight, sampled every 0.025 seconds for smoother curvature. Dotted path markers
+have been removed. Collision prediction still checks the full four-second
+flight; this presentation does not exaggerate gravity or lift.
 
 The solver normalizes the input direction before applying speed, matching
 `ProjectileHandler`. Regression checks also verify both endpoints of every
 physical arc segment against the calculated flight positions. The straight
 cosmetic link from the held spear to the release point has been removed; only
-the sampled flight arc and its markers are visible.
+the sampled flight arc and its impact marker are visible.
 The guide starts at the game's projectile spawn point. The held first-person
 weapon can sit elsewhere on screen; no visual offset is blended into flight samples.
 
@@ -139,7 +139,7 @@ Collision previews ignore fully transparent and non-colliding parts, including
 generator bodies and character hitboxes that meet either condition. This is a
 display filter; the game can still register impacts on some excluded parts.
 
-Arc lines, dots, and the smaller impact marker now use normal scene depth rather
+Arc lines and the smaller impact marker now use normal scene depth rather
 than drawing through walls. The projectile target highlight is also occluded.
 Ordinary trajectories stop at valid collisions; powered trajectories retain the
 game's wall piercing, with hidden portions obscured by world geometry.

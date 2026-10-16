@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 78
+local VERSION = 79
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -80,9 +80,8 @@ local K = {
 	PROJECTILE_FULL_CHARGE_TIME = 2,
 	PROJECTILE_GRAVITY_MULTIPLIER = 0.5,
 	PROJECTILE_FLIGHT_TIME = 4,
-	PROJECTILE_ARC_STEPS = 80,
+	PROJECTILE_ARC_STEPS = 160,
 	PROJECTILE_PREVIEW_TIME = 1.35,
-	PROJECTILE_PREVIEW_DOTS = 18,
 	PROJECTILE_BEAM_THICKNESS = 3,
 	PROJECTILE_BEAM_ZINDEX = -1,
 	PROJECTILE_IMPACT_RADIUS = 0.25,
@@ -133,7 +132,6 @@ local projectilePowerGui
 local projectilePowerLabel
 local projectileBeamAdornment
 local projectileArcBeams = {}
-local projectileArcNodes = {}
 local projectileImpactAdornment
 local projectileRenderBound = false
 local projectileThrowHolding = false
@@ -673,8 +671,6 @@ end
 local function clearProjectilePreview()
 	for _, beam in ipairs(projectileArcBeams) do beam:Destroy() end
 	table.clear(projectileArcBeams)
-	for _, node in ipairs(projectileArcNodes) do node:Destroy() end
-	table.clear(projectileArcNodes)
 	if projectileBeamAdornment then
 		projectileBeamAdornment:Destroy()
 		projectileBeamAdornment = nil
@@ -1003,29 +999,6 @@ function Logic._setProjectileArc(points, _visualOrigin, color)
 		beam.Transparency = time <= K.PROJECTILE_PREVIEW_TIME and (0.14 + time / K.PROJECTILE_PREVIEW_TIME * 0.35) or 1
 	end
 	for index = #points, #projectileArcBeams do projectileArcBeams[index].Transparency = 1 end
-	-- Restore the early preview's dotted, fading arc. Sample the existing
-	-- physical trajectory; the display must not add lift or extra gravity.
-	local visibleNodes = 0
-	for index = 1, K.PROJECTILE_PREVIEW_DOTS do
-		local sample = K.PROJECTILE_PREVIEW_TIME * index / K.PROJECTILE_PREVIEW_DOTS / sampleTime
-		local before = math.floor(sample) + 1
-		local after = math.ceil(sample) + 1
-		if after > #points then break end
-		local node = projectileArcNodes[index]
-		if not node then
-			node = make("SphereHandleAdornment", {
-				Name = "ArcPoint" .. index, Adornee = Logic._ensureProjectileAdornmentRoot(),
-				AlwaysOnTop = false, ZIndex = K.PROJECTILE_BEAM_ZINDEX,
-				Radius = 0.14, Parent = ensureProjectileFolder(),
-			})
-			projectileArcNodes[index] = node
-		end
-		node.CFrame = CFrame.new(points[before] + (points[after] - points[before]) * (sample % 1))
-		node.Color3 = color
-		node.Transparency = 0.08 + index / K.PROJECTILE_PREVIEW_DOTS * 0.42
-		visibleNodes = index
-	end
-	for index = visibleNodes + 1, #projectileArcNodes do projectileArcNodes[index].Transparency = 1 end
 end
 
 function Logic._setProjectileTargetHighlight(model)

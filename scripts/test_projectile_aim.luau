@@ -182,13 +182,10 @@ return function(capture)
 			expect((beam.CFrame.Position - points[index]).Magnitude < 0.001, "Drawn segment starts outside the calculated flight path")
 			expect((beam.CFrame.Position + beam.CFrame.LookVector * beam.Length - points[index + 1]).Magnitude < 0.001, "Drawn segment ends outside the calculated flight path")
 		end
-		expect(visuals:FindFirstChild("ArcPoint18") ~= nil and visuals:FindFirstChild("ArcPoint19") == nil, "Early dotted-arc presentation was not restored")
-		expect((visuals.ArcPoint1.CFrame.Position - points[2]:Lerp(points[3], 0.5)).Magnitude < 0.001, "First dot is outside the physical trajectory")
-		expect((visuals.ArcPoint18.CFrame.Position - points[28]).Magnitude < 0.001, "Last dot does not mark 1.35 seconds of flight")
-		expect(visuals.ArcPoint1.Transparency < visuals.ArcPoint18.Transparency, "Arc dots do not fade with flight time")
-		expect(visuals.Arc27.Transparency < 1 and visuals.Arc28.Transparency == 1, "Long tail obscures the early curved preview")
+		expect(visuals:FindFirstChild("ArcPoint1") == nil, "Dotted path markers remain")
+		expect(#points == 161, "Curve no longer samples every 0.025 seconds")
+		expect(visuals.Arc54.Transparency < 1 and visuals.Arc55.Transparency == 1, "Long tail obscures the curved preview")
 		logic._setProjectileArc({ release, release + Vector3.new(0, 0, -1) }, visualOrigin, Color3.new(1, 1, 1))
-		expect(visuals.ArcPoint18.Transparency == 1, "Shorter path left old arc dots visible")
 		for _, object in ipairs(visuals:GetChildren()) do
 			if object.Name:match("^Arc") and object.Name ~= "Arc1" then expect(object.Transparency == 1, "Shorter path left old segments visible") end
 		end
