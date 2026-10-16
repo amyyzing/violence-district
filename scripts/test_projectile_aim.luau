@@ -157,9 +157,8 @@ return function(capture)
 		local visualOrigin = release + Vector3.new(0, 0, 2)
 		logic._setProjectileArc(points, visualOrigin, Color3.new(1, 1, 1))
 		local visuals = workspace.CateyesProjectileVisualiser
-		expect((visuals.Beam.CFrame.Position - visualOrigin).Magnitude < 0.001, "First drawn segment starts too far forward")
-		local rayVector = (visuals.Beam.CFrame.LookVector * visuals.Beam.Length)
-		expect((visuals.Beam.CFrame.Position + rayVector - points[1]).Magnitude < 0.001, "Cosmetic connector does not reach the physical release point")
+		expect(visuals.Beam.Transparency == 1, "Cosmetic connector is still visible")
+		expect(visuals.Beam.Length == 0, "Cosmetic connector still has length")
 		expect((visuals.Arc1.CFrame.Position - points[1]).Magnitude < 0.001, "The first physical curve segment was skipped")
 		expect((visuals.Arc1.CFrame.Position + visuals.Arc1.CFrame.LookVector * visuals.Arc1.Length - points[2]).Magnitude < 0.001, "First physical segment misses its sample")
 		for index = 1, #points - 1 do

@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 73
+local VERSION = 74
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -988,11 +988,11 @@ function Logic._projectileTrajectory(origin, direction, speed, gravity, params, 
 	return points
 end
 
-function Logic._setProjectileArc(points, visualOrigin, color)
-	-- Connect the cosmetic spear to the release point without replacing the
-	-- first physical curve segment with one long, flat line.
-	Logic._setProjectileBeam(visualOrigin, points[1], color)
-	projectileBeamAdornment.Transparency = 0.65
+function Logic._setProjectileArc(points, _visualOrigin, color)
+	-- Keep the cloning template hidden. A straight link from the cosmetic
+	-- spear to the release point is not part of the projectile's flight.
+	Logic._projectileBeam().Transparency = 1
+	projectileBeamAdornment.Length = 0
 	local sampleTime = K.PROJECTILE_FLIGHT_TIME / K.PROJECTILE_ARC_STEPS
 	for index = 1, #points - 1 do
 		local beam = projectileArcBeams[index]
