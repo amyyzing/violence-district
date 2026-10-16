@@ -34,7 +34,7 @@ return function(guiSource)
 	local checks = 0
 	local function expect(text)
 		task.wait()
-		assert(controller.Gui.Panel.HealingCounter.Text == text, "Unexpected healing counter: " .. controller.Gui.Panel.HealingCounter.Text)
+		assert(controller.Gui.Panel.Content.HealingCounter.Text == text, "Unexpected healing counter: " .. controller.Gui.Panel.Content.HealingCounter.Text)
 		checks = checks + 1
 	end
 	local ok, err = pcall(function()

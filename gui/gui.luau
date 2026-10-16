@@ -109,10 +109,10 @@ panel = make("Frame", "Panel", sg, {
 corner(panel, 14)
 make("UIStroke", "Outline", panel, { Color = C.line, Thickness = 1 })
 local scale = make("UIScale", "Scale", panel, { Scale = 1 })
-local reopen = button(sg, "Reopen", "CE", 12, 180, 44, 44, C.panel)
+local reopen = button(panel, "Reopen", "CE", 0, 0, 44, 44, C.panel)
 reopen.TextColor3 = C.accent
-corner(reopen, 14)
-make("UIStroke", "Outline", reopen, { Color = C.line, Thickness = 1 })
+reopen.BackgroundTransparency = 1
+reopen.Size = UDim2.fromScale(1, 1)
 reopen.Visible = not panel.Visible
 
 local header = button(panel, "Title", "", 20, 14, 258, 38, C.panel)
@@ -262,95 +262,74 @@ local function render(state)
 		option.TextColor3 = selected and C.panel or C.muted
 	end
 end
+local expanded = panel.Visible
+local fullPosition = panel.Position
+local cubePosition = UDim2.fromOffset(12, 180)
+local animating = false
+local content = make("CanvasGroup", "Content", panel, {
+	Size = UDim2.fromOffset(348, PANEL_HEIGHT), BackgroundTransparency = 1,
+})
+for _, child in ipairs(panel:GetChildren()) do
+	if child:IsA("GuiObject") and child ~= content and child ~= reopen then child.Parent = content end
+end
+panel.Visible, panel.ClipsDescendants = true, true
 local function fitPanel()
 	if destroyed then return end
 	local viewport = sg.AbsoluteSize
 	if viewport.X <= 0 or viewport.Y <= 0 then return end
 	local inset = game:GetService("GuiService"):GetGuiInset()
 	scale.Scale = math.min(1, math.max(1, viewport.X - 16) / 348, math.max(1, viewport.Y - inset.Y - 16) / PANEL_HEIGHT)
-	local x = panel.Position.X.Scale * viewport.X + panel.Position.X.Offset
-	local y = panel.Position.Y.Scale * viewport.Y + panel.Position.Y.Offset
-	panel.Position = UDim2.fromOffset(math.clamp(x, 8, math.max(8, viewport.X - 348 * scale.Scale - 8)),
+	local x = fullPosition.X.Scale * viewport.X + fullPosition.X.Offset
+	local y = fullPosition.Y.Scale * viewport.Y + fullPosition.Y.Offset
+	fullPosition = UDim2.fromOffset(math.clamp(x, 8, math.max(8, viewport.X - 348 * scale.Scale - 8)),
 		math.clamp(y, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - PANEL_HEIGHT * scale.Scale - 8)))
-	reopen.Position = UDim2.fromOffset(12, math.clamp(180, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 52)))
-end
--- Modal only releases the pointer while this panel is visible.
--- Never write MouseBehavior/MouseIconEnabled or restore a saved camera state.
-local minimizeProxy
-local function cancelMinimize()
-	local proxy = minimizeProxy
-	minimizeProxy = nil
-	if not proxy then return end
-	for _, object in ipairs(proxy:GetDescendants()) do
-		if tweens[object] then tweens[object]:Cancel() tweens[object] = nil end
+	cubePosition = UDim2.fromOffset(12, math.clamp(180, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 52)))
+	if not animating then
+		panel.Position = expanded and fullPosition or cubePosition
+		panel.Size = expanded and UDim2.fromOffset(348, PANEL_HEIGHT) or UDim2.fromOffset(44 / scale.Scale, 44 / scale.Scale)
 	end
-	if tweens[proxy] then tweens[proxy]:Cancel() tweens[proxy] = nil end
-	proxy:Destroy()
 end
+-- The same frame remains on screen throughout both transitions.
 local function syncVisibility()
-	header.Modal = not destroyed and sg.Enabled and panel.Visible
-	reopen.Visible = not panel.Visible
+	header.Modal = not destroyed and sg.Enabled and expanded and not animating
+	reopen.Visible = not expanded and not animating
+	content.Visible = expanded or animating
+	content.Interactable = expanded and not animating
 end
-local function setVisible(visible)
-	cancelMinimize()
-	tween(reopen, { Rotation = 0 })
+local function transition(visible)
+	if destroyed or (not animating and expanded == visible) then return end
+	if expanded and not animating then fullPosition = panel.Position end
+	expanded = visible
 	drag = nil
 	closeHovered, closePressed = false, false
 	animateClose()
-	panel.Visible = visible
-	reopen.Visible = not visible
+	animating = true
 	fitPanel()
 	syncVisibility()
-end
-local function transition(visible)
-	if destroyed or (not minimizeProxy and panel.Visible == visible) then return end
-	fitPanel()
-	-- Absolute screen positions include the ScreenGui inset; tween positions do not.
-	local center = panel.AbsolutePosition - sg.AbsolutePosition + panel.AbsoluteSize * 0.5
-	local target = reopen.AbsolutePosition - sg.AbsolutePosition + reopen.AbsoluteSize * 0.5
-	local proxy = panel:Clone()
-	proxy.Name, proxy.AnchorPoint = "Minimizing", Vector2.new(0.5, 0.5)
-	proxy.Position, proxy.ClipsDescendants = UDim2.fromOffset(center.X, center.Y), true
-	local fullSize = panel.Size
-	local cubeSize = UDim2.fromOffset(44 / scale.Scale, 44 / scale.Scale)
-	proxy.Visible = true
-	if visible then
-		proxy.Position, proxy.Size = UDim2.fromOffset(target.X, target.Y), cubeSize
-	end
-	local children = proxy:GetChildren()
-	local content = make("CanvasGroup", "Content", proxy, {
-		Size = UDim2.fromOffset(348, PANEL_HEIGHT), BackgroundTransparency = 1,
-		GroupTransparency = visible and 1 or 0,
-	})
-	for _, child in ipairs(children) do if child:IsA("GuiObject") then child.Parent = content end end
-	for _, object in ipairs(proxy:GetDescendants()) do
-		if object:IsA("GuiButton") then object.Modal, object.Active = false, false end
-	end
-	setVisible(false)
-	minimizeProxy, proxy.Parent = proxy, sg
-	-- The full panel shrinks into the cube without changing its silhouette.
-	reopen.Visible = false
 	tween(content, { GroupTransparency = visible and 0 or 1 }, 0.7)
+	local animation = tween(panel, {
+		Position = visible and fullPosition or cubePosition,
+		Size = visible and UDim2.fromOffset(348, PANEL_HEIGHT) or UDim2.fromOffset(44 / scale.Scale, 44 / scale.Scale),
+	}, 0.7, Enum.EasingDirection.InOut)
 	task.spawn(function()
-		local result = tween(proxy, {
-			Position = UDim2.fromOffset(visible and center.X or target.X, visible and center.Y or target.Y),
-			Size = visible and fullSize or cubeSize,
-		}, 0.7, Enum.EasingDirection.InOut).Completed:Wait()
-		if destroyed or minimizeProxy ~= proxy or result ~= Enum.PlaybackState.Completed then return end
-		setVisible(visible)
+		local result = animation.Completed:Wait()
+		if destroyed or tweens[panel] ~= animation or result ~= Enum.PlaybackState.Completed then return end
+		animating = false
+		fitPanel()
+		syncVisibility()
 	end)
 end
 connect(header.InputBegan, function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+	if expanded and not animating and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
 		drag = { input = input, start = input.Position, position = panel.Position }
 	end
 end)
 connect(UserInputService.InputChanged, function(input)
-	if not drag or not panel.Visible then return end
+	if not drag or not expanded or animating then return end
 	local mouseMove = drag.input.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement
 	if input ~= drag.input and not mouseMove then return end
 	local delta = input.Position - drag.start
-	panel.Position = drag.position + UDim2.fromOffset(delta.X, delta.Y)
+	fullPosition = drag.position + UDim2.fromOffset(delta.X, delta.Y)
 	fitPanel()
 end)
 connect(UserInputService.InputEnded, function(input) if drag and input == drag.input then drag = nil end end)
@@ -363,22 +342,20 @@ connect(close.Activated, function() transition(false) end)
 connect(reopen.Activated, function() transition(true) end)
 connect(Logic.Changed, render)
 connect(sg:GetPropertyChangedSignal("Enabled"), syncVisibility)
-connect(panel:GetPropertyChangedSignal("Visible"), syncVisibility)
 connect(sg:GetPropertyChangedSignal("AbsoluteSize"), fitPanel)
 connect(UserInputService.InputBegan, function(input, processed)
 	if not processed and not UserInputService:GetFocusedTextBox() and input.KeyCode == Enum.KeyCode.RightControl then
-		transition(not panel.Visible)
+		transition(not expanded)
 	end
 end)
 local controller = { Gui = sg }
 function controller.getState()
-	return { enabled = panel.Visible, position = panel.Position }
+	return { enabled = expanded, position = fullPosition }
 end
 function controller.destroy()
 	if destroyed then return end
 	destroyed = true
 	drag = nil
-	cancelMinimize()
 	syncVisibility()
 	for _, connection in ipairs(connections) do connection:Disconnect() end
 	for _, connection in ipairs(healingConnections) do connection:Disconnect() end
@@ -394,6 +371,7 @@ globalState[GUI_KEY] = controller
 connect(sg.Destroying, controller.destroy)
 Logic.start()
 render(Logic.getState())
-task.defer(fitPanel)
+content.GroupTransparency = expanded and 0 or 1
+fitPanel()
 syncVisibility()
 return controller

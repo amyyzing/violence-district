@@ -4,6 +4,7 @@ return function()
 	local controller = getgenv().ViolenceDistrictGui
 	local gui = controller.Gui
 	local panel = gui.Panel
+	local content = panel.Content
 	local input = game:GetService("UserInputService")
 	local saved, savedGui = logic.getState(), controller.getState()
 	local checks = 0
@@ -18,7 +19,7 @@ return function()
 	end
 	local function finishTransition()
 		local deadline = os.clock() + 3
-		repeat task.wait() until not gui:FindFirstChild("Minimizing") or os.clock() >= deadline
+		repeat task.wait() until content.Interactable or panel.Reopen.Visible or os.clock() >= deadline
 	end
 	local fields = {
 		{ "Highlights", "highlightsEnabled", logic.setHighlightsEnabled },
@@ -27,11 +28,11 @@ return function()
 		{ "SpearAim", "spearAimEnabled", logic.setSpearAimEnabled },
 	}
 	local ok, err = pcall(function()
-		expect(not panel.Features:FindFirstChild("PathTreeRow") and logic.setPathTreeEnabled == nil, "Path feature was not removed")
-		if not panel.Visible then activate(gui.Reopen) finishTransition() end
-		expect(panel.Title.Modal, "Visible panel did not release the pointer")
+		expect(not content.Features:FindFirstChild("PathTreeRow") and logic.setPathTreeEnabled == nil, "Path feature was not removed")
+		if not controller.getState().enabled then activate(panel.Reopen) finishTransition() end
+		expect(content.Title.Modal, "Visible panel did not release the pointer")
 		for _, item in ipairs(fields) do
-			local row = panel.Features[item[1] .. "Row"]
+			local row = content.Features[item[1] .. "Row"]
 			local initial = logic.getState()[item[2]]
 			activate(row)
 			expect(logic.getState()[item[2]] ~= initial, item[1] .. " did not toggle with one click")
@@ -39,49 +40,54 @@ return function()
 			expect(logic.getState()[item[2]] == initial, item[1] .. " did not toggle back")
 		end
 		for _, mode in ipairs({ "Normal", "Perfect" }) do
-			activate(panel.Mode[mode])
-			activate(panel.Mode[mode])
+			activate(content.Mode[mode])
+			activate(content.Mode[mode])
 			expect(logic.getState().skillCheckMode == mode, "Mode selection failed")
 		end
 		local behavior, icon = input.MouseBehavior, input.MouseIconEnabled
-		activate(panel.Close)
-		expect(not panel.Visible and not panel.Title.Modal, "Hide did not release modal state")
-		expect(gui:FindFirstChild("Minimizing") ~= nil, "Minimize button skipped the minimize tween")
+		activate(content.Close)
+		expect(not controller.getState().enabled and not content.Title.Modal, "Hide did not release modal state")
+		expect(panel.Parent == gui and not content.Interactable, "Main frame did not start minimizing")
+		expect(not panel.Reopen.Visible, "Cube appeared before minimize completed")
 		expect(input.MouseBehavior == behavior and input.MouseIconEnabled == icon, "Hide overwrote the game's current mouse state")
-		activate(gui.Reopen)
+		activate(panel.Reopen)
 		finishTransition()
-		expect(panel.Visible and not gui.Reopen.Visible and panel.Title.Modal, "Reopen failed")
-		expect(gui:FindFirstChild("Minimizing") == nil, "Reopen did not cancel the minimize tween")
+		expect(controller.getState().enabled and not panel.Reopen.Visible and content.Title.Modal, "Reopen failed")
+		expect(gui.Panel == panel, "Transition replaced the main frame")
 		local keyboardToggle
 		for _, connection in ipairs(getconnections(input.InputBegan)) do
 			if connection.Function then
 				for _, value in pairs(getupvalues(connection.Function)) do
-					if value == panel then keyboardToggle = connection.Function end
+					if type(value) == "function" then
+						for _, nested in pairs(getupvalues(value)) do
+							if nested == panel then keyboardToggle = connection.Function end
+						end
+					end
 				end
 			end
 		end
 		expect(keyboardToggle ~= nil, "GUI keyboard toggle was not found")
 		keyboardToggle({ KeyCode = Enum.KeyCode.RightControl }, false)
-		local proxy = gui:FindFirstChild("Minimizing")
-		expect(not panel.Visible and proxy ~= nil, "Keyboard minimize skipped the minimize tween")
+		expect(not controller.getState().enabled and not content.Interactable, "Keyboard minimize did not start")
 		task.wait(0.1)
-		expect(proxy.Parent == gui and proxy.Size.Y.Offset < panel.Size.Y.Offset and proxy.Size.Y.Offset > 44,
-			string.format("Minimize tween did not shrink the panel: parent=%s height=%s full=%s", tostring(proxy.Parent == gui), tostring(proxy.Size.Y.Offset), tostring(panel.Size.Y.Offset)))
-		expect(proxy:FindFirstChild("Tail1") == nil and proxy.Rotation == 0, "Minimize still deformed the panel")
+		expect(not panel.Reopen.Visible, "Cube appeared during minimize")
+		expect(panel.Size.Y.Offset < 328 and panel.Size.Y.Offset > 44, "Main frame did not shrink")
+		expect(gui.Panel == panel and not gui:FindFirstChild("Minimizing"), "Minimize used a replacement frame")
 		finishTransition()
-		expect(gui:FindFirstChild("Minimizing") == nil and gui.Reopen.Visible, "Minimize tween did not finish at the reopen button")
-		local target = gui.Reopen.AbsolutePosition - gui.AbsolutePosition + gui.Reopen.AbsoluteSize * 0.5
-		expect((Vector2.new(proxy.Position.X.Offset, proxy.Position.Y.Offset) - target).Magnitude < 0.1,
-			"Minimize endpoint did not match the cube's position")
+		expect(panel.Reopen.Visible and not content.Visible, "Cube did not appear when minimize completed")
+		local cube = panel.Reopen
+		expect((panel.AbsolutePosition - cube.AbsolutePosition).Magnitude < 0.1 and
+			(panel.AbsoluteSize - cube.AbsoluteSize).Magnitude < 0.1, "Cube did not match the main frame")
+		expect(math.abs(panel.AbsoluteSize.X - 44) < 0.1 and math.abs(panel.AbsoluteSize.Y - 44) < 0.1, "Cube size was incorrect")
 		keyboardToggle({ KeyCode = Enum.KeyCode.RightControl }, false)
 		finishTransition()
-		expect(panel.Visible and panel.Title.Modal, "Keyboard reopen failed")
+		expect(controller.getState().enabled and content.Title.Modal, "Keyboard reopen failed")
 		gui.Enabled = false
 		task.wait(0.1)
-		expect(not panel.Title.Modal, "Disabled ScreenGui retained modal state")
+		expect(not content.Title.Modal, "Disabled ScreenGui retained modal state")
 		gui.Enabled = true
 		task.wait(0.1)
-		expect(panel.Title.Modal, "Re-enabled ScreenGui did not restore modal state")
+		expect(content.Title.Modal, "Re-enabled ScreenGui did not restore modal state")
 		for _, object in ipairs(panel:GetDescendants()) do
 			if object:IsA("TextLabel") or object:IsA("TextButton") then
 				expect(object.TextFits, "Text overflow: " .. object.Name)
@@ -91,8 +97,8 @@ return function()
 	gui.Enabled = true
 	for _, item in ipairs(fields) do item[3](saved[item[2]]) end
 	logic.setSkillCheckMode(saved.skillCheckMode)
-	panel.Position = savedGui.position
-	if not savedGui.enabled then activate(panel.Close) finishTransition() end
+	-- The transition preserves the saved full-panel position.
+	if not savedGui.enabled then activate(content.Close) finishTransition() end
 	assert(ok, err)
 	return string.format("PASS: %d assertions; single-click toggles, mode selection, hide/reopen, mouse ownership, text fit", checks)
 end
