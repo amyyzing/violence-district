@@ -5,6 +5,7 @@ return function(c)
 	local lineGUI
 	local goalGUI
 	local steppedConnection
+	local rotationConnection
 	local goalConnection
 	local ancestryConnection
 	local descendantAddedConnection
@@ -15,8 +16,9 @@ return function(c)
 	local inputFailureWarned = false
 	local scanForCheck
 
-	local SUCCESS_MIN = 103
-	local SUCCESS_MAX = 113
+	local SUCCESS_MIN = 102
+	local SUCCESS_MAX = 116
+	local NORMAL_MAX = 159
 	local PERFECT_TARGET = 108
 	local PROMPT_NAMES = {
 		SkillCheckPromptGui = true,
@@ -33,7 +35,9 @@ return function(c)
 
 	local function stopWatching()
 		disconnect(steppedConnection)
+		disconnect(rotationConnection)
 		steppedConnection = nil
+		rotationConnection = nil
 		previousRelativeRotation = nil
 	end
 
@@ -79,8 +83,13 @@ return function(c)
 	end
 
 	local function shouldTrigger(relativeRotation)
-		if relativeRotation < SUCCESS_MIN or relativeRotation > SUCCESS_MAX then
+		if relativeRotation < SUCCESS_MIN or relativeRotation > NORMAL_MAX then
 			return false
+		end
+		-- A fast tween can skip the entire great zone between rendered frames.
+		-- The game still accepts this following region as a normal hit.
+		if relativeRotation > SUCCESS_MAX then
+			return true
 		end
 		if c.getMode() ~= "Perfect" or relativeRotation >= PERFECT_TARGET then
 			return true
@@ -100,8 +109,8 @@ return function(c)
 			return
 		end
 
-		steppedConnection = c.runService.Stepped:Connect(function()
-			if not active or not c.getEnabled() or not isVisible(boundCheck) then
+		local function checkRotation()
+			if not active or consumed or not c.getEnabled() or not isVisible(boundCheck) then
 				stopWatching()
 				return
 			end
@@ -121,7 +130,11 @@ return function(c)
 				consumed = true
 				sendSpaceInput()
 			end
-		end)
+		end
+		-- Observe the actual tween update, rather than waiting for the next
+		-- physics step. Keep the step check for prompts enabled mid-rotation.
+		rotationConnection = lineGUI:GetPropertyChangedSignal("Rotation"):Connect(checkRotation)
+		steppedConnection = c.runService.Stepped:Connect(checkRotation)
 	end
 
 	local function unbindCheck()

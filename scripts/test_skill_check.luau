@@ -3,6 +3,8 @@ return function(factory)
 	local container = Instance.new("Folder")
 	local step = Instance.new("BindableEvent")
 	local presses = 0
+	local pressedAngles = {}
+	local observedCheck
 	local enabled, mode = true, "Perfect"
 	local feature
 	local function prompt(name, visible)
@@ -32,7 +34,12 @@ return function(factory)
 			playerGui = container,
 			runService = { Stepped = step.Event },
 			virtualInputManager = { SendKeyEvent = function(_, down)
-				if down then presses = presses + 1 end
+				if down then
+					presses = presses + 1
+					if observedCheck then
+						pressedAngles[#pressedAngles + 1] = observedCheck.Line.Rotation - observedCheck.Goal.Rotation
+					end
+				end
 			end },
 			getEnabled = function() return enabled end,
 			setEnabled = function(value) enabled = value end,
@@ -112,15 +119,81 @@ return function(factory)
 		assert(presses == 8, "Wrapped a missed full rotation into a false success")
 		hit(recreated)
 		assert(presses == 9, "New continuous-rotation goal did not rearm")
+		observedCheck = recreated
+		local function rotationCase(angles, expected, caseMode)
+			recreated.Visible = false
+			task.wait()
+			feature.setMode(caseMode or "Perfect")
+			recreated.Line.Rotation = recreated.Goal.Rotation
+			recreated.Visible = true
+			task.wait()
+			local before = presses
+			for _, angle in ipairs(angles) do
+				recreated.Line.Rotation = recreated.Goal.Rotation + angle
+				task.wait()
+			end
+			assert(presses == before + (expected and 1 or 0), "Incorrect input count for rotation case")
+			if expected == true then
+				local angle = pressedAngles[#pressedAngles]
+				assert(angle >= 102 and angle <= 159, "Tween input fell outside the game's accepted window")
+			elseif expected then
+				assert(pressedAngles[#pressedAngles] == expected, "Wrong rotation-change hit angle")
+			end
+			step:Fire()
+			task.wait()
+			assert(presses == before + (expected and 1 or 0), "Step duplicated a rotation-change input")
+		end
+		rotationCase({ 80, 100, 115, 140 }, 115)
+		rotationCase({ 70, 100, 130, 160 }, 130)
+		rotationCase({ 100, 159, 180 }, 159)
+		rotationCase({ 100, 160, 468 }, nil)
+		rotationCase({ 90, 102, 120 }, 102, "Normal")
+		rotationCase({ 90, 116, 130 }, 116)
+		for _, fps in ipairs({ 30, 60, 120 }) do
+			for _, duration in ipairs({ 0.4, 0.65, 1.3 }) do
+				for _, goal in ipairs({ 0, 47, 199, 700 }) do
+					recreated.Visible = false
+					task.wait()
+					recreated.Goal.Rotation = goal
+					local angles = {}
+					for frame = 1, math.ceil((goal % 360 + 160) * duration * fps / 360) do
+						local angle = frame * 360 / (duration * fps) - goal % 360
+						angles[#angles + 1] = angle
+					end
+					rotationCase(angles, true)
+				end
+			end
+		end
+		for _, duration in ipairs({ 0.4, 0.65, 1.3 }) do
+			for _, goal in ipairs({ 0, 47, 199, 700 }) do
+				recreated.Visible = false
+				task.wait()
+				recreated.Goal.Rotation = goal
+				recreated.Line.Rotation = goal - goal % 360
+				recreated.Visible = true
+				task.wait()
+				local before = presses
+				local tween = game:GetService("TweenService"):Create(recreated.Line,
+					TweenInfo.new(duration, Enum.EasingStyle.Linear), { Rotation = goal + 180 })
+				tween:Play()
+				tween.Completed:Wait()
+				task.wait()
+				assert(presses == before + 1, "Real tween did not produce exactly one input")
+				local angle = pressedAngles[#pressedAngles]
+				assert(angle >= 102 and angle <= 159, "Real tween input missed the accepted window")
+				tween:Destroy()
+			end
+		end
 		local queued = prompt("SkillCheckPromptGui-con", true)
+		local beforeDestroy = presses
 		feature.destroy()
 		task.wait()
 		hit(queued)
-		assert(presses == 9, "Deferred work survived destroy")
+		assert(presses == beforeDestroy, "Deferred work survived destroy")
 	end)
 	if feature then feature.destroy() end
 	container:Destroy()
 	step:Destroy()
 	assert(ok, err)
-	return "PASS: initial visibility, prompt switching, goal rearm, replacement, recreation, mode/enable deduplication, hidden screen, disable/resume, continuous rotations, cleanup"
+	return "PASS: lifecycle, absolute rotations, skipped great zones, window boundaries, 36 sampled rotation cases, 12 real tweens, cleanup"
 end

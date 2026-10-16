@@ -13,6 +13,11 @@ Choose **Normal** or **Perfect** beside **Skill mode**. Drag the title to move
 the panel. **Right Control** or the minus button hides it; the floating **CE**
 button reopens it. The panel automatically fits smaller viewports.
 
+Skill checks react to needle rotation updates and use the game's full great-hit
+window. Perfect mode aims near its center; if a fast frame skips the great
+window, either mode takes a valid normal hit when possible. Frame stalls that
+skip both windows and executor input delays can still cause misses.
+
 Highlights also show generator progress, for example `42.3/100 (42.3%)`.
 Labels sit above the generator hitbox and scale with distance and camera zoom.
 They update with repair progress and disappear on completion, removal, or when
@@ -70,8 +75,8 @@ accuracy also depend on the executor and the current game mechanics.
 The October 9 compatibility audit used live place version **10392**. Generator
 and hook discovery, team colors, completed-generator cleanup, and live path
 construction passed. Current generator/healing scripts still accept relative
-angles from 102 through 116 degrees; the helper uses a smaller window within it
-and now compares absolute rotations exactly as the game does. Old-character
+angles from 102 through 116 degrees; the helper uses that full window and
+compares absolute rotations exactly as the game does. Old-character
 animation and spear-mode callbacks can no longer clear a new character's preview.
 GUI and projectile fixtures passed; actual Veil impacts and skill-input delivery
 were not exercised in gameplay during that audit. Path construction described
