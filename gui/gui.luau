@@ -2,7 +2,7 @@ local LOGIC_KEY = "ViolenceDistrictLogic"
 local GUI_KEY = "ViolenceDistrictGui"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local LOGIC_VERSION = 85
+local LOGIC_VERSION = 86
 local PANEL_HEIGHT = 398
 
 local Players = game:GetService("Players")
@@ -52,6 +52,7 @@ local C = {
 	hover = Color3.fromRGB(39, 42, 51), line = Color3.fromRGB(49, 53, 63),
 	text = Color3.fromRGB(237, 238, 243), muted = Color3.fromRGB(148, 154, 171),
 	accent = Color3.fromRGB(184, 172, 249),
+	disabled = Color3.fromRGB(83, 89, 105),
 }
 local function connect(signal, callback)
 	local connection = signal:Connect(callback)
@@ -207,6 +208,7 @@ local group = make("Frame", "Features", panel, {
 	Position = UDim2.fromOffset(20, 80), Size = UDim2.fromOffset(308, 230), BackgroundColor3 = C.surface,
 })
 corner(group, 10)
+local availability = Logic.getFeatureAvailability()
 local channels = {
 	{ id = "Highlights", title = "Highlights", hotkey = "Y", key = "highlightsEnabled", set = Logic.setHighlightsEnabled },
 	{ id = "SkillCheck", title = "Skill check", hotkey = "G", key = "skillCheckEnabled", set = Logic.setSkillCheckEnabled },
@@ -217,9 +219,10 @@ local channels = {
 for index, channel in ipairs(channels) do
 	local row = button(group, channel.id .. "Row", "", 0, (index - 1) * 46, 308, 46)
 	corner(row, 10)
-	label(row, "Label", channel.title, 14, 0, 174, 46, 13, C.text, Enum.Font.GothamMedium)
+	channel.label = label(row, "Label", channel.title, 14, 0, 174, 46, 13, C.text, Enum.Font.GothamMedium)
 	local key = label(row, "Hotkey", channel.hotkey, 190, 0, 20, 46, 11, C.muted)
 	key.TextXAlignment = Enum.TextXAlignment.Center
+	channel.row, channel.hotkeyLabel = row, key
 	channel.status = label(row, "State", "Off", 226, 0, 32, 46, 11, C.muted)
 	local mark = make("Frame", "Mark", row, {
 		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(280, 23),
@@ -227,8 +230,12 @@ for index, channel in ipairs(channels) do
 	})
 	corner(mark, 3)
 	channel.mark = mark
-	connect(row.Activated, function() channel.set(not Logic.getState()[channel.key]) end)
-	connect(row.MouseEnter, function() tween(row, { BackgroundColor3 = C.hover }) end)
+	connect(row.Activated, function()
+		if Logic.getFeatureAvailability()[channel.key] ~= false then channel.set(not Logic.getState()[channel.key]) end
+	end)
+	connect(row.MouseEnter, function()
+		if availability[channel.key] ~= false then tween(row, { BackgroundColor3 = C.hover }) end
+	end)
 	connect(row.MouseLeave, function() tween(row, { BackgroundColor3 = C.surface }) end)
 	if index < #channels then
 		make("Frame", "Divider" .. index, group, {
@@ -294,13 +301,19 @@ for index, mode in ipairs({ "Normal", "Perfect" }) do
 end
 local parryTiming = label(panel, "ParryTiming", "Parry: off", 20, 366, 308, 18, 11, C.muted)
 local function render(state)
+	availability = Logic.getFeatureAvailability()
 	parryTiming.Text = state.autoParryEnabled and (state.autoParryStatus or "Watching attacks") or "Parry: off"
-	aimFovEnabled = state.spearAimEnabled == true
+	aimFovEnabled = state.spearAimEnabled == true and availability.spearAimEnabled == true
 	updateAimFov()
 	for _, channel in ipairs(channels) do
-		local on = state[channel.key] == true
-		channel.status.Text = on and "On" or "Off"
-		channel.status.TextColor3 = on and C.accent or C.muted
+		local available = availability[channel.key] ~= false
+		local on = available and state[channel.key] == true
+		channel.row.Interactable = available
+		channel.label.TextColor3 = available and C.text or C.disabled
+		channel.hotkeyLabel.TextColor3 = available and C.muted or C.disabled
+		channel.status.Text = available and (on and "On" or "Off") or "—"
+		channel.status.TextColor3 = available and (on and C.accent or C.muted) or C.disabled
+		if not available then tween(channel.row, { BackgroundColor3 = C.surface }) end
 		tween(channel.mark, { Rotation = on and 45 or 0, BackgroundColor3 = on and C.accent or C.line })
 	end
 	for mode, option in pairs(modeButtons) do
@@ -309,6 +322,16 @@ local function render(state)
 		option.TextColor3 = selected and C.panel or C.muted
 	end
 end
+local availabilityElapsed = 0
+connect(game:GetService("RunService").Heartbeat, function(dt)
+	availabilityElapsed = availabilityElapsed + dt
+	if availabilityElapsed < 0.1 then return end
+	availabilityElapsed = 0
+	local nextAvailability = Logic.getFeatureAvailability()
+	for key, value in pairs(nextAvailability) do
+		if availability[key] ~= value then render(Logic.getState()) return end
+	end
+end)
 local expanded = panel.Visible
 local fullPosition = panel.Position
 local cubePosition = UDim2.fromOffset(12, 180)

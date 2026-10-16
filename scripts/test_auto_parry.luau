@@ -34,7 +34,7 @@ return function(factory)
 		return model, root, humanoid
 	end
 	local localCharacter = character(0)
-	local enemy, enemyRoot, enemyHumanoid = character(11)
+	local enemy, enemyRoot, enemyHumanoid = character(16)
 	local player = { Name = "Local", Character = localCharacter, Team = { Name = "Survivors" }, CharacterAdded = signal() }
 	local killer = { Name = "Killer", Character = enemy, Team = { Name = "Killer" }, CharacterAdded = signal() }
 	local players = { PlayerAdded = signal(), PlayerRemoving = signal(), GetPlayers = function() return { player, killer } end }
@@ -83,11 +83,11 @@ return function(factory)
 	feature._observe(killer, track("RunAnim"))
 	expect(calls == 0, "Non-attack animation triggered parry")
 	feature._observe(killer, track())
-	expect(calls == 0, "Killer outside 10 studs triggered parry")
-	enemyRoot.Position = Vector3.new(10, 0, 0)
+	expect(calls == 0, "Killer outside 15 studs triggered parry")
+	enemyRoot.Position = Vector3.new(15, 0, 0)
 	clock = clock + 0.02
 	heartbeat:Fire()
-	expect(calls == 1 and client.isParryResolving, "Entering 10 studs during wind-up did not activate native client")
+	expect(calls == 1 and client.isParryResolving, "Entering 15 studs during wind-up did not activate native client")
 	expect(math.abs(feature.getDiagnostics().pending.localMs - 20) < 0.00001, "Cue-to-call timing is incorrect")
 	heartbeat:Fire()
 	expect(calls == 1, "Pending request repeated parry")

@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 85
+local VERSION = 86
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -173,6 +173,19 @@ end
 local function trackMapConnection(connection)
 	table.insert(mapConnections, connection)
 	return connection
+end
+
+function Logic.getFeatureAvailability(player)
+	player = player or LP
+	local character = player.Character
+	local team = player.Team and player.Team.Name or ""
+	-- The character marker covers melee mode; selection metadata also covers initial spawn.
+	local selected = player.GetAttribute and player:GetAttribute("SelectedKiller")
+	local veil = team == "Killer" and character ~= nil
+		and (character:GetAttribute("spearmode") ~= nil or selected == "Veil")
+	local dagger = team:lower():match("^survivor") ~= nil and character ~= nil
+		and character:FindFirstChild("Parrying Dagger", true) ~= nil
+	return { projectileVisualiserEnabled = veil, spearAimEnabled = veil, autoParryEnabled = dagger }
 end
 
 local function copyState()
@@ -728,7 +741,7 @@ end
 
 local function projectileWeaponActive()
 	local character = getCharacter()
-	return character and character:GetAttribute("spearmode") == true
+	return Logic.getFeatureAvailability().spearAimEnabled and character and character:GetAttribute("spearmode") == true
 end
 
 local function projectilePreviewAllowed()
@@ -1511,23 +1524,23 @@ function Logic.toggleHighlights()
 end
 
 function Logic.setProjectileVisualiserEnabled(on)
+	if on and not Logic.getFeatureAvailability().projectileVisualiserEnabled then return end
 	Logic._installFeatureModules()
 	featureModules.ProjectileVisualiser.setEnabled(on)
 end
 
 function Logic.toggleProjectileVisualiser()
-	Logic._installFeatureModules()
-	featureModules.ProjectileVisualiser.toggle()
+	Logic.setProjectileVisualiserEnabled(not projectileVisualiserEnabled)
 end
 
 function Logic.setSpearAimEnabled(on)
+	if on and not Logic.getFeatureAvailability().spearAimEnabled then return end
 	Logic._installFeatureModules()
 	featureModules.SpearAim.setEnabled(on)
 end
 
 function Logic.toggleSpearAim()
-	Logic._installFeatureModules()
-	featureModules.SpearAim.toggle()
+	Logic.setSpearAimEnabled(not spearAimEnabled)
 end
 
 function Logic.setSkillCheckEnabled(on)
@@ -1536,13 +1549,13 @@ function Logic.setSkillCheckEnabled(on)
 end
 
 function Logic.setAutoParryEnabled(on)
+	if on and not Logic.getFeatureAvailability().autoParryEnabled then return end
 	Logic._installFeatureModules()
 	featureModules.AutoParry.setEnabled(on)
 end
 
 function Logic.toggleAutoParry()
-	Logic._installFeatureModules()
-	featureModules.AutoParry.toggle()
+	Logic.setAutoParryEnabled(not autoParryEnabled)
 end
 
 function Logic.getParryDiagnostics()

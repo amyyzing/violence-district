@@ -36,24 +36,37 @@ return function()
 			local row = content.Features[item[1] .. "Row"]
 			local initial = logic.getState()[item[2]]
 			activate(row)
-			expect(logic.getState()[item[2]] ~= initial, item[1] .. " did not toggle with one click")
-			activate(row)
-			expect(logic.getState()[item[2]] == initial, item[1] .. " did not toggle back")
+			if logic.getFeatureAvailability()[item[2]] == false then
+				expect(not row.Interactable and row.State.Text == "—", item[1] .. " was not greyed out")
+				expect(logic.getState()[item[2]] == initial, item[1] .. " toggled while unavailable")
+				if not initial then
+					item[3](true)
+					expect(logic.getState()[item[2]] == false, item[1] .. " API enabled an unavailable feature")
+				end
+			else
+				expect(logic.getState()[item[2]] ~= initial, item[1] .. " did not toggle with one click")
+				activate(row)
+				expect(logic.getState()[item[2]] == initial, item[1] .. " did not toggle back")
+			end
 		end
 		for _, mode in ipairs({ "Normal", "Perfect" }) do
 			activate(content.Mode[mode])
 			activate(content.Mode[mode])
 			expect(logic.getState().skillCheckMode == mode, "Mode selection failed")
 		end
-		logic.setSpearAimEnabled(true)
-		task.wait(0.03)
-		local fov = gui.SpearAimFov
-		expect(fov.Visible and fov.AbsoluteSize.X == logic.SpearAimFovRadius * 2, "Aim FOV did not match the selection radius")
-		local mouse = input:GetMouseLocation()
-		expect((fov.AbsolutePosition + fov.AbsoluteSize * 0.5 - mouse).Magnitude < 1, "Aim FOV was offset from the mouse")
-		logic.setSpearAimEnabled(false)
-		task.wait(0.03)
-		expect(not fov.Visible, "Aim FOV remained visible after disabling aim")
+		if logic.getFeatureAvailability().spearAimEnabled then
+			logic.setSpearAimEnabled(true)
+			task.wait(0.03)
+			local fov = gui.SpearAimFov
+			expect(fov.Visible and fov.AbsoluteSize.X == logic.SpearAimFovRadius * 2, "Aim FOV did not match the selection radius")
+			local mouse = input:GetMouseLocation()
+			expect((fov.AbsolutePosition + fov.AbsoluteSize * 0.5 - mouse).Magnitude < 1, "Aim FOV was offset from the mouse")
+			logic.setSpearAimEnabled(false)
+			task.wait(0.03)
+			expect(not fov.Visible, "Aim FOV remained visible after disabling aim")
+		else
+			expect(not gui.SpearAimFov.Visible, "Aim FOV remained visible for an unavailable character")
+		end
 		local behavior, icon = input.MouseBehavior, input.MouseIconEnabled
 		activate(content.Close)
 		expect(not controller.getState().enabled and not content.Title.Modal, "Hide did not release modal state")

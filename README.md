@@ -2,6 +2,10 @@
 
 A compact interface for Violence District. Click a feature row once to toggle it.
 The small indicator rotates and lights up when enabled.
+Projectile preview and Spear aim are greyed out unless you are Veil on the Killer
+team. Auto parry is greyed out unless you are a survivor with an equipped dagger.
+Unavailable rows cannot be activated, including through their hotkeys. The rows
+refresh as your role, character or equipped item changes.
 
 | Feature | Hotkey |
 | --- | --- |
@@ -42,7 +46,7 @@ No camera solution is applied when a target is unreachable at the current charge
 
 **Auto parry** starts off. Enable it with **K** or its row while playing survivor.
 An identified melee attack or lunge-hold animation triggers the equipped dagger's
-existing `ParryClient` when its killer is within 10 studs. Native readiness checks
+existing `ParryClient` when its killer is within 15 studs. Native readiness checks
 still apply, including cooldown, silence, health and other actions. Each observed
 attack gets at most one attempt. The inspected Veil melee animation IDs and the
 shared `attack`/`lungehold` track names are recognized; custom attacks with other

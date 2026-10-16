@@ -17,10 +17,11 @@ return function(guiSource)
 	local player = { Character = character(70, true), CharacterAdded = added.Event, CharacterRemoving = removing.Event }
 	function player:WaitForChild() return playerGui end
 	local state = { skillCheckMode = "Perfect" }
-	local logic = { Version = 85, SpearAimFovRadius = 120, Changed = changed.Event, start = function() end, getState = function() return state end }
+	local logic = { Version = 86, SpearAimFovRadius = 120, Changed = changed.Event, start = function() end, getState = function() return state end }
 	for _, name in ipairs({ "setHighlightsEnabled", "setSkillCheckEnabled", "setProjectileVisualiserEnabled", "setSpearAimEnabled", "setAutoParryEnabled", "setSkillCheckMode" }) do
 		logic[name] = function() end
 	end
+	logic.getFeatureAvailability = function() return {} end
 	local globals = { ViolenceDistrictLogic = logic }
 	local proxy = {}
 	function proxy:GetService(name)

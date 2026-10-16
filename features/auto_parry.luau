@@ -106,7 +106,7 @@ return function(context)
 				cues[killer] = nil
 			elseif not cue.used and killer.Team and killer.Team.Name == "Killer"
 				and enemyHumanoid and enemyHumanoid.Health > 0 and not enemy:GetAttribute("IsStunned")
-				and (enemyRoot.Position - root.Position).Magnitude <= 10 then
+				and (enemyRoot.Position - root.Position).Magnitude <= 15 then
 				cue.used = true
 				local sample = { killer = killer.Name, cueAt = cue.observedAt, distance = (enemyRoot.Position - root.Position).Magnitude }
 				pending = sample
