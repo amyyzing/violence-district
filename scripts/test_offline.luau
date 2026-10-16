@@ -84,6 +84,25 @@ globals.ViolenceDistrictLogic = {
 }
 local logic = assert(loadfile("features/logic.luau"))()
 print(assert(loadfile("scripts/test_spear_aim.luau"))()(logic))
+-- Replay irregular physics steps: the weighted correction should match integration.
+local falling, fallingVelocity, flightAge = 0, 0, 0
+for index = 1, 32 do
+	local dt = index % 2 == 1 and 0.01 or 0.03
+	logic._recordProjectileStep(dt)
+	fallingVelocity = fallingVelocity - 98.1 * dt
+	falling = falling + fallingVelocity * dt
+	flightAge = flightAge + dt
+end
+local effectiveStep = logic._projectileFrameStep()
+assert(math.abs(effectiveStep - 0.025) < 0.000001, "Irregular cadence used an unweighted average")
+assert(math.abs(falling + 0.5 * 98.1 * flightAge * (flightAge + effectiveStep)) < 0.000001,
+	"Cadence correction disagreed with velocity-first physics")
+logic._recordProjectileStep(0)
+logic._recordProjectileStep(1)
+assert(math.abs(logic._projectileFrameStep() - effectiveStep) < 0.000001, "Invalid frame time polluted prediction")
+for _ = 1, 32 do logic._recordProjectileStep(1 / 60) end
+assert(math.abs(logic._projectileFrameStep() - 1 / 60) < 0.000001, "Cadence window did not recover after a frame-rate change")
+print("PASS: irregular physics cadence, invalid timing and frame-rate recovery")
 assert(migrated and destroyed, "Old path feature was not stopped during upgrade")
 assert(logic.setPathTreeEnabled == nil and logic.getState().pathTreeEnabled == nil, "Removed path API remains")
 assert(logic.getState().highlightsEnabled, "Upgrade lost the remaining feature state")

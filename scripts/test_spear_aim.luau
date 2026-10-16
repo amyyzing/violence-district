@@ -51,6 +51,16 @@ return function(logic)
 	expect(logic._spearIntercept(origin, origin, Vector3.zero, 0, 98.1) == nil, "Zero speed produced an aim solution")
 	local _, straightTime = logic._spearIntercept(origin, Vector3.new(0, 3, -60), Vector3.zero, 120, 0)
 	expect(math.abs(straightTime - 0.5) < 0.00001, "Zero-gravity intercept is incorrect")
+	local speed, gravity, dt = 165, 98.1, 1 / 60
+	local peakTime = (-3 * dt + math.sqrt(dt * dt + 32 * speed * speed / (gravity * gravity))) / 4
+	local range = math.sqrt(speed * speed * peakTime * peakTime - (0.5 * gravity * peakTime * (peakTime + dt)) ^ 2)
+	local far = Vector3.new(0, 3, -(range - 0.0001))
+	local direction, time = logic._spearIntercept(origin, far, Vector3.zero, speed, gravity, dt)
+	expect(direction ~= nil, "Narrow valid intercept near maximum range was missed")
+	local hit = origin + direction * speed * time - Vector3.new(0, 0.5 * gravity * time * (time + dt), 0)
+	expect((hit - far).Magnitude < 0.0001, "Maximum-range solution did not meet the target")
+	expect(logic._spearIntercept(origin, Vector3.new(0, 3, -(range + 0.01)), Vector3.zero, speed, gravity, dt) == nil,
+		"Beyond-range target received a false intercept")
 	if not Instance or not Vector2 then return string.format("PASS: %d intercept assertions", checks) end
 	local models = {}
 	local function player(x, team)

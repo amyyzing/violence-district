@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 81
+local VERSION = 82
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -827,6 +827,21 @@ function Logic._projectileRaycastParams(character)
 	return params
 end
 
+local projectileSteps, projectileStepIndex, projectileStepSum, projectileStepSquares = {}, 0, 0, 0
+function Logic._recordProjectileStep(dt)
+	if dt <= 0 or dt > 0.25 then return end
+	projectileStepIndex = projectileStepIndex % 32 + 1
+	local old = projectileSteps[projectileStepIndex] or 0
+	projectileSteps[projectileStepIndex] = dt
+	projectileStepSum = projectileStepSum + dt - old
+	projectileStepSquares = projectileStepSquares + dt * dt - old * old
+end
+
+function Logic._projectileFrameStep(fallback)
+	-- Velocity-first integration adds a drop proportional to sum(dt^2), not just mean(dt).
+	return projectileStepSum > 0 and projectileStepSquares / projectileStepSum or (fallback or 1 / 60)
+end
+
 function Logic._spearIntercept(origin, target, targetVelocity, speed, gravity, frameStep, latency)
 	if speed <= 0 then return nil end
 	local relative = target + targetVelocity * (latency or 0) - origin
@@ -838,20 +853,33 @@ function Logic._spearIntercept(origin, target, targetVelocity, speed, gravity, f
 		local delta = displacement(t)
 		return delta.Magnitude * delta.Magnitude - speed * speed * t * t
 	end
-	local before = 0
+	local function solve(before, after)
+		for _ = 1, 24 do
+			local middle = (before + after) * 0.5
+			if errorAt(middle) > 0 then before = middle else after = middle end
+		end
+		local time = (before + after) * 0.5
+		local delta = displacement(time)
+		if delta.Magnitude < 0.000001 then return nil end
+		return delta.Unit, time, target + targetVelocity * (time + (latency or 0))
+	end
+	local older, before = 0, 0
+	local olderError, beforeError = errorAt(0), errorAt(0)
 	for index = 1, 400 do
 		local after = K.PROJECTILE_FLIGHT_TIME * index / 400
-		if errorAt(after) <= 0 then
-			for _ = 1, 24 do
-				local middle = (before + after) * 0.5
-				if errorAt(middle) > 0 then before = middle else after = middle end
+		local afterError = errorAt(after)
+		if afterError <= 0 then return solve(before, after) end
+		-- Near maximum range, both roots can fall between two scan samples.
+		if before > 0 and beforeError < olderError and beforeError < afterError then
+			local left, right = older, after
+			for _ = 1, 32 do
+				local a, b = left + (right - left) / 3, right - (right - left) / 3
+				if errorAt(a) < errorAt(b) then right = b else left = a end
 			end
-			local time = (before + after) * 0.5
-			local delta = displacement(time)
-			if delta.Magnitude < 0.000001 then return nil end
-			return delta.Unit, time, target + targetVelocity * (time + (latency or 0))
+			local minimum = (left + right) * 0.5
+			if errorAt(minimum) <= 0 then return solve(older, minimum) end
 		end
-		before = after
+		older, olderError, before, beforeError = before, beforeError, after, afterError
 	end
 	return nil
 end
@@ -926,7 +954,7 @@ local function updateSpearAim(deltaTime)
 	local ok, ping = pcall(function() return LP:GetNetworkPing() end)
 	local latency = ok and math.clamp(ping * 0.5, 0, 0.25) or 0
 	local direction, time, point = Logic._spearIntercept(origin, torso.Position, velocity, spearAimSpeed,
-		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, deltaTime, latency)
+		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, Logic._projectileFrameStep(deltaTime), latency)
 	Logic._spearAimDebug = { target = spearAimTarget, direction = direction, flightTime = time, point = point,
 		speed = spearAimSpeed, velocity = velocity }
 	if direction then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, camera.CFrame.Position + direction) end
@@ -1184,7 +1212,7 @@ local function updateProjectilePreview(deltaTime)
 	local powerLabel, powerPercent, powerColor, speed, piercing = projectilePowerState()
 	updateProjectilePowerIndicator(powerLabel, powerPercent, powerColor)
 	local points, result, characterModel = Logic._projectileTrajectory(startPosition, aimDirection, speed,
-		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, params, deltaTime, piercing)
+		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, params, Logic._projectileFrameStep(deltaTime), piercing)
 	local beamColor = characterModel and K.PROJECTILE_TARGET_COLOR or powerColor
 	local impactColor = characterModel and K.PROJECTILE_TARGET_COLOR
 		or (result and Color3.fromRGB(255, 96, 72) or powerColor)
@@ -1499,6 +1527,7 @@ function Logic.start()
 	end
 
 	started = true
+	trackConnection(RunService.Heartbeat:Connect(Logic._recordProjectileStep))
 
 	for _, player in ipairs(Players:GetPlayers()) do
 		watchPlayer(player)
