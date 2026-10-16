@@ -109,11 +109,38 @@ panel = make("Frame", "Panel", sg, {
 corner(panel, 14)
 make("UIStroke", "Outline", panel, { Color = C.line, Thickness = 1 })
 local scale = make("UIScale", "Scale", panel, { Scale = 1 })
-local reopen = button(panel, "Reopen", "CE", 0, 0, 44, 44, C.panel)
+local reopen = button(panel, "Reopen", "", 0, 0, 44, 44, C.panel)
 reopen.TextColor3 = C.accent
 reopen.BackgroundTransparency = 1
 reopen.Size = UDim2.fromScale(1, 1)
 reopen.Visible = not panel.Visible
+
+-- Native geometry sampled from the supplied icon's alpha silhouette.
+local reopenIcon = make("Frame", "ReopenIcon", reopen, {
+	AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(20, 20), BackgroundTransparency = 1,
+})
+-- Match the minimize icon's proportion within its 32px button, on this 44px cube.
+make("UIScale", "Scale", reopenIcon, { Scale = 0.65 * 44 / 32 })
+for index, span in ipairs({
+	{ 29, 1, 1 }, { 28, 2, 3 }, { 27, 3, 3 }, { 10, 4, 12 }, { 26, 4, 3 },
+	{ 8, 5, 16 }, { 25, 5, 3 }, { 7, 6, 20 }, { 5, 7, 22 }, { 4, 8, 9 },
+	{ 19, 8, 9 }, { 3, 9, 8 }, { 20, 9, 9 }, { 2, 10, 8 }, { 20, 10, 10 },
+	{ 2, 11, 7 }, { 13, 11, 17 }, { 1, 12, 8 }, { 12, 12, 9 }, { 23, 12, 8 },
+	{ 0, 13, 8 }, { 11, 13, 10 }, { 24, 13, 8 }, { 0, 14, 8 }, { 11, 14, 10 },
+	{ 24, 14, 8 }, { 0, 15, 8 }, { 11, 15, 10 }, { 24, 15, 8 }, { 0, 16, 8 },
+	{ 11, 16, 10 }, { 24, 16, 8 }, { 0, 17, 8 }, { 11, 17, 10 }, { 24, 17, 8 },
+	{ 0, 18, 8 }, { 11, 18, 10 }, { 24, 18, 8 }, { 1, 19, 8 }, { 11, 19, 9 },
+	{ 23, 19, 8 }, { 2, 20, 17 }, { 23, 20, 7 }, { 2, 21, 10 }, { 22, 21, 8 },
+	{ 3, 22, 9 }, { 21, 22, 8 }, { 4, 23, 9 }, { 19, 23, 9 }, { 5, 24, 22 },
+	{ 5, 25, 20 }, { 4, 26, 3 }, { 8, 26, 16 }, { 3, 27, 3 }, { 11, 27, 11 },
+	{ 2, 28, 3 }, { 1, 29, 3 }, { 2, 30, 1 },
+}) do
+	make("Frame", "Stroke" .. index, reopenIcon, {
+		Position = UDim2.fromScale(span[1] / 32, span[2] / 32),
+		Size = UDim2.fromScale(span[3] / 32, 1 / 32), BackgroundColor3 = C.accent,
+	})
+end
 
 local header = button(panel, "Title", "", 20, 14, 258, 38, C.panel)
 local brand = label(header, "Brand", "Cateyes", 0, 0, 258, 38, 23, C.text, Enum.Font.GothamBold)
