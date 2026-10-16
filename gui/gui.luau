@@ -276,10 +276,10 @@ local function fitPanel()
 end
 -- Modal only releases the pointer while this panel is visible.
 -- Never write MouseBehavior/MouseIconEnabled or restore a saved camera state.
-local suctionProxy
-local function cancelSuction()
-	local proxy = suctionProxy
-	suctionProxy = nil
+local minimizeProxy
+local function cancelMinimize()
+	local proxy = minimizeProxy
+	minimizeProxy = nil
 	if not proxy then return end
 	for _, object in ipairs(proxy:GetDescendants()) do
 		if tweens[object] then tweens[object]:Cancel() tweens[object] = nil end
@@ -292,7 +292,7 @@ local function syncVisibility()
 	reopen.Visible = not panel.Visible
 end
 local function setVisible(visible)
-	cancelSuction()
+	cancelMinimize()
 	tween(reopen, { Rotation = 0 })
 	drag = nil
 	closeHovered, closePressed = false, false
@@ -302,56 +302,42 @@ local function setVisible(visible)
 	fitPanel()
 	syncVisibility()
 end
-local function minimize()
-	if destroyed or not panel.Visible then return end
+local function transition(visible)
+	if destroyed or (not minimizeProxy and panel.Visible == visible) then return end
 	fitPanel()
-	local center = panel.AbsolutePosition + panel.AbsoluteSize * 0.5
-	local target = reopen.AbsolutePosition + reopen.AbsoluteSize * 0.5
-	local delta = target - center
-	local angle = math.deg(math.atan2(delta.Y, delta.X))
-	if angle > 90 then angle = angle - 180 elseif angle < -90 then angle = angle + 180 end
+	-- Absolute screen positions include the ScreenGui inset; tween positions do not.
+	local center = panel.AbsolutePosition - sg.AbsolutePosition + panel.AbsoluteSize * 0.5
+	local target = reopen.AbsolutePosition - sg.AbsolutePosition + reopen.AbsoluteSize * 0.5
 	local proxy = panel:Clone()
-	proxy.Name, proxy.AnchorPoint = "Suction", Vector2.new(0.5, 0.5)
+	proxy.Name, proxy.AnchorPoint = "Minimizing", Vector2.new(0.5, 0.5)
 	proxy.Position, proxy.ClipsDescendants = UDim2.fromOffset(center.X, center.Y), true
+	local fullSize = panel.Size
+	local cubeSize = UDim2.fromOffset(44 / scale.Scale, 44 / scale.Scale)
+	proxy.Visible = true
+	if visible then
+		proxy.Position, proxy.Size = UDim2.fromOffset(target.X, target.Y), cubeSize
+	end
 	local children = proxy:GetChildren()
 	local content = make("CanvasGroup", "Content", proxy, {
 		Size = UDim2.fromOffset(348, PANEL_HEIGHT), BackgroundTransparency = 1,
+		GroupTransparency = visible and 1 or 0,
 	})
 	for _, child in ipairs(children) do if child:IsA("GuiObject") then child.Parent = content end end
 	for _, object in ipairs(proxy:GetDescendants()) do
 		if object:IsA("GuiButton") then object.Modal, object.Active = false, false end
 	end
 	setVisible(false)
-	suctionProxy, proxy.Parent = proxy, sg
+	minimizeProxy, proxy.Parent = proxy, sg
+	-- The full panel shrinks into the cube without changing its silhouette.
+	reopen.Visible = false
+	tween(content, { GroupTransparency = visible and 0 or 1 }, 0.7)
 	task.spawn(function()
-		local function phase(props, duration, direction)
-			local result = tween(proxy, props, duration, direction).Completed:Wait()
-			return not destroyed and suctionProxy == proxy and result == Enum.PlaybackState.Completed
-		end
-		tween(content, { GroupTransparency = 1 }, 0.1)
-		tween(proxy.Corner, { CornerRadius = UDim.new(0.5, 0) }, 0.16)
-		tween(proxy.Outline, { Transparency = 1 }, 0.09)
-		if not phase({ Size = UDim2.fromOffset(390, 198), Rotation = angle * 0.2,
-			BackgroundColor3 = C.accent }, 0.09) then return end
-		proxy.ClipsDescendants = false
-		local side = delta.X >= 0 and 1 or 0
-		for index, geometry in ipairs({ { side, 0.65, 0.48 }, { side == 1 and 1.32 or -0.32, 0.3, 0.22 } }) do
-			local tail = make("Frame", "Tail" .. index, proxy, {
-				AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(geometry[1], 0.5),
-				Size = UDim2.fromScale(geometry[2], geometry[3]), BackgroundColor3 = C.accent,
-				BackgroundTransparency = 1,
-			})
-			corner(tail, 100)
-			tween(tail, { BackgroundTransparency = 0 }, 0.07)
-		end
-		local halfway = center + delta * 0.55
-		if not phase({ Position = UDim2.fromOffset(halfway.X, halfway.Y), Size = UDim2.fromOffset(200, 68),
-			Rotation = angle, BackgroundColor3 = C.accent }, 0.17, Enum.EasingDirection.InOut) then return end
-		if not phase({ Position = UDim2.fromOffset(target.X, target.Y), Size = UDim2.fromOffset(4, 4),
-			Rotation = angle }, 0.14, Enum.EasingDirection.In) then return end
-		cancelSuction()
-		tween(reopen, { Rotation = -9 }, 0.06).Completed:Wait()
-		if not destroyed and not panel.Visible then tween(reopen, { Rotation = 0 }, 0.12) end
+		local result = tween(proxy, {
+			Position = UDim2.fromOffset(visible and center.X or target.X, visible and center.Y or target.Y),
+			Size = visible and fullSize or cubeSize,
+		}, 0.7, Enum.EasingDirection.InOut).Completed:Wait()
+		if destroyed or minimizeProxy ~= proxy or result ~= Enum.PlaybackState.Completed then return end
+		setVisible(visible)
 	end)
 end
 connect(header.InputBegan, function(input)
@@ -373,15 +359,15 @@ connect(UserInputService.WindowFocusReleased, function()
 	closeHovered, closePressed = false, false
 	animateClose()
 end)
-connect(close.Activated, minimize)
-connect(reopen.Activated, function() setVisible(true) end)
+connect(close.Activated, function() transition(false) end)
+connect(reopen.Activated, function() transition(true) end)
 connect(Logic.Changed, render)
 connect(sg:GetPropertyChangedSignal("Enabled"), syncVisibility)
 connect(panel:GetPropertyChangedSignal("Visible"), syncVisibility)
 connect(sg:GetPropertyChangedSignal("AbsoluteSize"), fitPanel)
 connect(UserInputService.InputBegan, function(input, processed)
 	if not processed and not UserInputService:GetFocusedTextBox() and input.KeyCode == Enum.KeyCode.RightControl then
-		setVisible(not panel.Visible)
+		transition(not panel.Visible)
 	end
 end)
 local controller = { Gui = sg }
@@ -392,7 +378,7 @@ function controller.destroy()
 	if destroyed then return end
 	destroyed = true
 	drag = nil
-	cancelSuction()
+	cancelMinimize()
 	syncVisibility()
 	for _, connection in ipairs(connections) do connection:Disconnect() end
 	for _, connection in ipairs(healingConnections) do connection:Disconnect() end
