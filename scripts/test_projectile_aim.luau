@@ -23,6 +23,28 @@ return function(capture)
 	params.FilterType = Enum.RaycastFilterType.Include
 	params.FilterDescendantsInstances = { fixtures }
 	local ok, err = pcall(function()
+		for _, case in ipairs({ { 0.25, true, 37.5, false }, { 0.99, true, 148.5, false },
+			{ 1, true, 142.5, false }, { 1.99, true, 142.5, false }, { 2, true, 165, true },
+			{ 2, false, 142.5, false }, { 7, false, 142.5, false } }) do
+			local speed, piercing = logic._projectileLaunchSpeed(case[1], case[2])
+			expect(math.abs(speed - case[3]) < 0.001 and piercing == case[4], "Charge/cooldown disagrees with Veil's throw script")
+		end
+		local hudRoot = Instance.new("Folder")
+		hudRoot.Parent = fixtures
+		local hud = Instance.new("ScreenGui")
+		hud.Name, hud.Parent = "Slasher", hudRoot
+		local moves = Instance.new("Folder")
+		moves.Name, moves.Parent = "Gen", hud
+		local move = Instance.new("Frame")
+		move.Name, move.Parent = "Move2", moves
+		local icon = Instance.new("ImageLabel")
+		icon.Name, icon.Parent, icon.ImageColor3 = "Icon", move, Color3.new(1, 1, 1)
+		expect(logic._projectileSpecialReady(hudRoot), "Ready ability HUD was ignored")
+		icon.ImageColor3 = Color3.fromRGB(51, 51, 51)
+		expect(not logic._projectileSpecialReady(hudRoot), "Cooling ability was treated as ready")
+		icon.ImageColor3, hud.Enabled = Color3.new(1, 1, 1), false
+		expect(not logic._projectileSpecialReady(hudRoot), "Inactive ability HUD was used")
+		hudRoot:Destroy()
 		-- Paired camera/server directions from three live throws with little camera
 		-- movement. One additional capture turned quickly during replication delay.
 		local throws = {
@@ -87,6 +109,15 @@ return function(capture)
 		layerParams.FilterType = Enum.RaycastFilterType.Exclude
 		local layeredHit = logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -12), layerParams)
 		expect(layeredHit and layeredHit.Instance == wall, "Skipped a solid wall behind nine non-colliding parts")
+		local target = Instance.new("Model")
+		target.Parent = layers
+		local targetHumanoid = Instance.new("Humanoid")
+		targetHumanoid.Parent = target
+		local targetPart = part(target, "Target", origin + Vector3.new(0, 0, -11), Vector3.one)
+		local piercingParams = RaycastParams.new()
+		piercingParams.FilterType = Enum.RaycastFilterType.Exclude
+		local piercingHit, piercingTarget = logic._projectileSegmentRaycast(origin, Vector3.new(0, 0, -12), piercingParams, true)
+		expect(piercingHit and piercingHit.Instance == targetPart and piercingTarget == target, "Piercing spear stopped at a wall before the survivor")
 		layers:Destroy()
 		local trigger = part(fixtures, "Trigger", origin + Vector3.new(0, 0, -1), Vector3.new(4, 4, 0.01))
 		trigger.CanCollide = false

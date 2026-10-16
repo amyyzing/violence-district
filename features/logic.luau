@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 69
+local VERSION = 70
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -737,21 +737,41 @@ local function setProjectileHolding(inputHolding, animationHolding)
 	Logic._refreshProjectileVisualiser()
 end
 
+function Logic._projectileSpecialReady(playerGui)
+	for _, name in ipairs({ "Slasher", "Slasher-mob", "Slasher-con" }) do
+		local gui = playerGui:FindFirstChild(name)
+		local moves = gui and gui:FindFirstChild("Gen")
+		local move = moves and moves:FindFirstChild("Move2")
+		local icon = move and move:FindFirstChild("Icon")
+		if gui and gui:IsA("ScreenGui") and gui.Enabled and icon then
+			local color = icon.ImageColor3
+			return color.R > 0.9 and color.G > 0.9 and color.B > 0.9
+		end
+	end
+	return false
+end
+
+function Logic._projectileLaunchSpeed(held, specialReady)
+	if held >= K.PROJECTILE_FULL_CHARGE_TIME and specialReady then return K.PROJECTILE_SPEED, true end
+	if held >= 1 then return K.PROJECTILE_MID_SPEED, false end
+	return math.max(held * K.PROJECTILE_CHARGE_SPEED, 1), false
+end
+
 local function projectilePowerState()
 	if not projectileThrowHolding or projectileHoldStartClock <= 0 then
 		return "READY", 1, Color3.fromRGB(255, 232, 119), K.PROJECTILE_SPEED
 	end
 
 	local held = os.clock() - projectileHoldStartClock
-	if held >= K.PROJECTILE_FULL_CHARGE_TIME then
-		return "FULL", 1, Color3.fromRGB(255, 121, 73), K.PROJECTILE_SPEED
+	local speed, piercing = Logic._projectileLaunchSpeed(held, Logic._projectileSpecialReady(PG))
+	if piercing then
+		return "FULL", 1, Color3.fromRGB(255, 121, 73), speed, true
 	end
 
 	if held >= 1 then
 		return "MID", K.PROJECTILE_MID_SPEED / K.PROJECTILE_SPEED, Color3.fromRGB(255, 178, 82), K.PROJECTILE_MID_SPEED
 	end
 
-	local speed = math.max(held * K.PROJECTILE_CHARGE_SPEED, 1)
 	return "LOW", math.clamp(speed / K.PROJECTILE_SPEED, 0, 1), Color3.fromRGB(126, 226, 255), speed
 end
 
@@ -811,7 +831,7 @@ function Logic._projectileCharacterModel(instance)
 	return nil
 end
 
-function Logic._projectileSegmentRaycast(origin, direction, params)
+function Logic._projectileSegmentRaycast(origin, direction, params, piercing)
 	local distance = direction.Magnitude
 	if distance <= 0.000001 then
 		return nil, nil
@@ -830,11 +850,11 @@ function Logic._projectileSegmentRaycast(origin, direction, params)
 			return result, characterModel
 		end
 
-		if result.Instance == workspace.Terrain then
+		if not piercing and result.Instance == workspace.Terrain then
 			return result, nil
 		end
 
-		if result.Instance:IsA("BasePart") and result.Instance.CanCollide then
+		if not piercing and result.Instance:IsA("BasePart") and result.Instance.CanCollide then
 			return result, nil
 		end
 
@@ -944,7 +964,7 @@ function Logic._projectileVisualOrigin(camera, fallback)
 	return fallback
 end
 
-function Logic._projectileTrajectory(origin, direction, speed, gravity, params, frameStep)
+function Logic._projectileTrajectory(origin, direction, speed, gravity, params, frameStep, piercing)
 	local points = { origin }
 	local velocity = direction.Unit * speed
 	local previous = origin
@@ -953,7 +973,7 @@ function Logic._projectileTrajectory(origin, direction, speed, gravity, params, 
 		local t = K.PROJECTILE_FLIGHT_TIME * index / K.PROJECTILE_ARC_STEPS
 		-- ProjectileHandler updates velocity before position each Heartbeat.
 		local position = origin + velocity * t + Vector3.new(0, -0.5 * gravity * t * (t + step), 0)
-		local result, target = Logic._projectileSegmentRaycast(previous, position - previous, params)
+		local result, target = Logic._projectileSegmentRaycast(previous, position - previous, params, piercing)
 		table.insert(points, result and result.Position or position)
 		if result then return points, result, target end
 		previous = position
@@ -1038,10 +1058,10 @@ local function updateProjectilePreview(deltaTime)
 	local params = Logic._projectileRaycastParams(character)
 	-- Lookvectorgiver sends this direction, without aiming at Mouse.Hit.
 	local aimDirection = camera.CFrame.LookVector
-	local powerLabel, powerPercent, powerColor, speed = projectilePowerState()
+	local powerLabel, powerPercent, powerColor, speed, piercing = projectilePowerState()
 	updateProjectilePowerIndicator(powerLabel, powerPercent, powerColor)
 	local points, result, characterModel = Logic._projectileTrajectory(startPosition, aimDirection, speed,
-		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, params, deltaTime)
+		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, params, deltaTime, piercing)
 	local beamColor = characterModel and K.PROJECTILE_TARGET_COLOR or powerColor
 	local impactColor = characterModel and K.PROJECTILE_TARGET_COLOR
 		or (result and Color3.fromRGB(255, 96, 72) or powerColor)

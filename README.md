@@ -103,6 +103,10 @@ seconds. Rendered-curve interpolation stayed within 0.05 studs of those flight
 traces. This validates the flight curve, not future moving-target hits or every
 collision surface; low-charge throws below the medium tier still need capture.
 
+The preview checks the Veil ability HUD before predicting the full charged
+throw. During its cooldown, a long hold stays at 142.5 speed. A ready full charge
+uses 165 and predicts through world geometry while still stopping at characters.
+
 The solver normalizes the input direction before applying speed, matching
 `ProjectileHandler`. Regression checks also verify both endpoints of every
 physical arc segment against the calculated flight positions. The short link
