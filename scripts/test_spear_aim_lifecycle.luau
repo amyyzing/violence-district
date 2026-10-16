@@ -44,10 +44,13 @@ return function(source)
 		animation("92098503722633")
 		expect(bindings.CateyesSpearAim ~= nil, "Charge did not bind aim")
 		task.wait(1.02)
+		local previousDirection = camera.CFrame.LookVector
 		bindings.CateyesSpearAim.callback(1 / 60)
 		local aim = logic._spearAimDebug
 		expect(aim and aim.direction and aim.speed == 142.5, "Charge did not produce medium-speed intercept")
-		expect((camera.CFrame.LookVector - aim.direction).Magnitude < 0.0001, "Fake camera did not follow launch direction")
+		local remaining = (camera.CFrame.LookVector - aim.direction).Magnitude
+		expect(remaining > 0.0001 and remaining < (previousDirection - aim.direction).Magnitude,
+			"Camera did not ease toward the launch direction")
 		expect(bindings.CateyesSpearAim.priority == Enum.RenderPriority.Camera.Value + 1, "Aim uses incorrect camera priority")
 		local targetRoot = target.HumanoidRootPart
 		targetRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 16)
@@ -61,6 +64,8 @@ return function(source)
 		animation("93136435416899")
 		bindings.CateyesSpearAim.callback(1 / 60)
 		expect(logic._spearAimDebug.speed == 142.5, "Release changed medium shot to full speed")
+		expect((camera.CFrame.LookVector - logic._spearAimDebug.direction).Magnitude < 0.0001,
+			"Smoothing left an aiming offset on release")
 		task.wait(0.17)
 		bindings.CateyesSpearAim.callback(1 / 60)
 		expect(not bindings.CateyesSpearAim and not logic._spearAimDebug, "Release retained camera lock")

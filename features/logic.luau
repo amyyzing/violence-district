@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 83
+local VERSION = 84
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -924,6 +924,10 @@ function Logic._spearMotionVelocity(sample, position, now, grounded)
 	return velocity
 end
 
+function Logic._spearAimAlpha(dt)
+	return 1 - math.exp(-28 * math.max(dt or 1 / 60, 0))
+end
+
 local spearAimMotion
 local function stopSpearAim()
 	if spearAimBound then RunService:UnbindFromRenderStep("CateyesSpearAim") end
@@ -958,7 +962,12 @@ local function updateSpearAim(deltaTime)
 		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, Logic._projectileFrameStep(deltaTime), latency)
 	Logic._spearAimDebug = { target = spearAimTarget, direction = direction, flightTime = time, point = point,
 		speed = spearAimSpeed, velocity = velocity }
-	if direction then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, camera.CFrame.Position + direction) end
+	if direction then
+		local goal = CFrame.lookAt(camera.CFrame.Position, camera.CFrame.Position + direction)
+		-- Ease while tracking; finish alignment on release so smoothing does not offset the throw.
+		local alpha = projectileThrowHolding and Logic._spearAimAlpha(deltaTime) or 1
+		camera.CFrame = camera.CFrame:Lerp(goal, alpha)
+	end
 end
 
 function Logic._refreshSpearAim()

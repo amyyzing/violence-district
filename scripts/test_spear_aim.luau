@@ -4,6 +4,16 @@ return function(logic)
 	local checks = 0
 	local function expect(value, message) assert(value, message) checks = checks + 1 end
 	local origin = Vector3.new(0, 3, 0)
+	for _, fps in ipairs({ 30, 60, 144 }) do
+		local elapsed, remaining = 0, 1
+		while elapsed < 0.1 do
+			local dt = math.min(1 / fps, 0.1 - elapsed)
+			remaining = remaining * (1 - logic._spearAimAlpha(dt))
+			elapsed = elapsed + dt
+		end
+		expect(math.abs(remaining - math.exp(-2.8)) < 0.000001, "Aim smoothing changed with frame rate")
+	end
+	expect(logic._spearAimAlpha(0) == 0, "Zero frame time advanced aim")
 	local sample = {}
 	expect(logic._spearMotionVelocity(sample, origin, 1, true).Magnitude == 0, "Unsampled motion invented a velocity")
 	local right = origin + Vector3.new(1.6, 0, 0)

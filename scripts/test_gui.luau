@@ -76,13 +76,18 @@ return function()
 			end
 		end
 		expect(keyboardToggle ~= nil, "GUI keyboard toggle was not found")
+		local sawShrink = false
+		local sizeConnection = panel:GetPropertyChangedSignal("Size"):Connect(function()
+			if panel.Size.Y.Offset < 328 and panel.Size.Y.Offset > 44 then sawShrink = true end
+		end)
 		keyboardToggle({ KeyCode = Enum.KeyCode.RightControl }, false)
 		expect(not controller.getState().enabled and not content.Interactable, "Keyboard minimize did not start")
 		task.wait(0.1)
 		expect(not panel.Reopen.Visible, "Cube appeared during minimize")
-		expect(panel.Size.Y.Offset < 328 and panel.Size.Y.Offset > 44, "Main frame did not shrink")
 		expect(gui.Panel == panel and not gui:FindFirstChild("Minimizing"), "Minimize used a replacement frame")
 		finishTransition()
+		sizeConnection:Disconnect()
+		expect(sawShrink, "Main frame did not shrink")
 		expect(panel.Reopen.Visible and not content.Visible, "Cube did not appear when minimize completed")
 		local cube = panel.Reopen
 		expect((panel.AbsolutePosition - cube.AbsolutePosition).Magnitude < 0.1 and
