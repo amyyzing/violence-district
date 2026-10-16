@@ -82,11 +82,12 @@ end
 local function corner(object, radius)
 	make("UICorner", "Corner", object, { CornerRadius = UDim.new(0, radius) })
 end
-local function tween(object, props)
+local function tween(object, props, duration, direction)
 	if tweens[object] then tweens[object]:Cancel() end
-	local animation = TweenService:Create(object, TweenInfo.new(0.14, Enum.EasingStyle.Quad), props)
+	local animation = TweenService:Create(object, TweenInfo.new(duration or 0.14, Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out), props)
 	tweens[object] = animation
 	animation:Play()
+	return animation
 end
 
 sg = make("ScreenGui", "CateyesGui", nil, {
@@ -273,11 +274,24 @@ local function fitPanel()
 end
 -- Modal only releases the pointer while this panel is visible.
 -- Never write MouseBehavior/MouseIconEnabled or restore a saved camera state.
+local suctionProxy
+local function cancelSuction()
+	local proxy = suctionProxy
+	suctionProxy = nil
+	if not proxy then return end
+	for _, object in ipairs(proxy:GetDescendants()) do
+		if tweens[object] then tweens[object]:Cancel() tweens[object] = nil end
+	end
+	if tweens[proxy] then tweens[proxy]:Cancel() tweens[proxy] = nil end
+	proxy:Destroy()
+end
 local function syncVisibility()
 	header.Modal = not destroyed and sg.Enabled and panel.Visible
 	reopen.Visible = not panel.Visible
 end
 local function setVisible(visible)
+	cancelSuction()
+	tween(reopen, { Rotation = 0 })
 	drag = nil
 	closeHovered, closePressed = false, false
 	animateClose()
@@ -285,6 +299,58 @@ local function setVisible(visible)
 	reopen.Visible = not visible
 	fitPanel()
 	syncVisibility()
+end
+local function minimize()
+	if destroyed or not panel.Visible then return end
+	fitPanel()
+	local center = panel.AbsolutePosition + panel.AbsoluteSize * 0.5
+	local target = reopen.AbsolutePosition + reopen.AbsoluteSize * 0.5
+	local delta = target - center
+	local angle = math.deg(math.atan2(delta.Y, delta.X))
+	if angle > 90 then angle = angle - 180 elseif angle < -90 then angle = angle + 180 end
+	local proxy = panel:Clone()
+	proxy.Name, proxy.AnchorPoint = "Suction", Vector2.new(0.5, 0.5)
+	proxy.Position, proxy.ClipsDescendants = UDim2.fromOffset(center.X, center.Y), true
+	local children = proxy:GetChildren()
+	local content = make("CanvasGroup", "Content", proxy, {
+		Size = UDim2.fromOffset(348, 282), BackgroundTransparency = 1,
+	})
+	for _, child in ipairs(children) do if child:IsA("GuiObject") then child.Parent = content end end
+	for _, object in ipairs(proxy:GetDescendants()) do
+		if object:IsA("GuiButton") then object.Modal, object.Active = false, false end
+	end
+	setVisible(false)
+	suctionProxy, proxy.Parent = proxy, sg
+	task.spawn(function()
+		local function phase(props, duration, direction)
+			local result = tween(proxy, props, duration, direction).Completed:Wait()
+			return not destroyed and suctionProxy == proxy and result == Enum.PlaybackState.Completed
+		end
+		tween(content, { GroupTransparency = 1 }, 0.1)
+		tween(proxy.Corner, { CornerRadius = UDim.new(0.5, 0) }, 0.16)
+		tween(proxy.Outline, { Transparency = 1 }, 0.09)
+		if not phase({ Size = UDim2.fromOffset(390, 198), Rotation = angle * 0.2,
+			BackgroundColor3 = C.accent }, 0.09) then return end
+		proxy.ClipsDescendants = false
+		local side = delta.X >= 0 and 1 or 0
+		for index, geometry in ipairs({ { side, 0.65, 0.48 }, { side == 1 and 1.32 or -0.32, 0.3, 0.22 } }) do
+			local tail = make("Frame", "Tail" .. index, proxy, {
+				AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(geometry[1], 0.5),
+				Size = UDim2.fromScale(geometry[2], geometry[3]), BackgroundColor3 = C.accent,
+				BackgroundTransparency = 1,
+			})
+			corner(tail, 100)
+			tween(tail, { BackgroundTransparency = 0 }, 0.07)
+		end
+		local halfway = center + delta * 0.55
+		if not phase({ Position = UDim2.fromOffset(halfway.X, halfway.Y), Size = UDim2.fromOffset(200, 68),
+			Rotation = angle, BackgroundColor3 = C.accent }, 0.17, Enum.EasingDirection.InOut) then return end
+		if not phase({ Position = UDim2.fromOffset(target.X, target.Y), Size = UDim2.fromOffset(4, 4),
+			Rotation = angle }, 0.14, Enum.EasingDirection.In) then return end
+		cancelSuction()
+		tween(reopen, { Rotation = -9 }, 0.06).Completed:Wait()
+		if not destroyed and not panel.Visible then tween(reopen, { Rotation = 0 }, 0.12) end
+	end)
 end
 connect(header.InputBegan, function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -305,7 +371,7 @@ connect(UserInputService.WindowFocusReleased, function()
 	closeHovered, closePressed = false, false
 	animateClose()
 end)
-connect(close.Activated, function() setVisible(false) end)
+connect(close.Activated, minimize)
 connect(reopen.Activated, function() setVisible(true) end)
 connect(Logic.Changed, render)
 connect(sg:GetPropertyChangedSignal("Enabled"), syncVisibility)
@@ -324,6 +390,7 @@ function controller.destroy()
 	if destroyed then return end
 	destroyed = true
 	drag = nil
+	cancelSuction()
 	syncVisibility()
 	for _, connection in ipairs(connections) do connection:Disconnect() end
 	for _, connection in ipairs(healingConnections) do connection:Disconnect() end
