@@ -9,7 +9,7 @@ function quote(source) {
 	while (source.includes(`]${equals}]`)) equals += "=";
 	return `[${equals}[${source}]${equals}]`;
 }
-const names = ["highlights", "projectile_visualiser", "skill_check"];
+const names = ["highlights", "projectile_visualiser", "skill_check", "auto_parry"];
 const sources = names.map((name) => `["${name}.luau"] = ${quote(read(`features/${name}.luau`))}`).join(",\n");
 const logic = read("features/logic.luau").replace("game:HttpGet(K.FEATURE_BASE_URL .. fileName)", "bundledFeatures[fileName]");
 if (logic === read("features/logic.luau")) throw new Error("Feature loader changed; update the bundle builder");

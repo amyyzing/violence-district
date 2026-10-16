@@ -9,6 +9,7 @@ The small indicator rotates and lights up when enabled.
 | Skill check | G |
 | Projectile preview | H |
 | Spear aim | J |
+| Auto parry | K |
 
 Choose **Normal** or **Perfect** beside the healing counter. Drag the title to move
 the panel. **Right Control** or the minimize button hides it; the floating **CE**
@@ -39,6 +40,21 @@ it immediately. The feature never throws or sends a weapon remote for you.
 Targets that turn, accelerate, jump, or move behind obstacles can still be missed.
 No camera solution is applied when a target is unreachable at the current charge.
 
+**Auto parry** starts off. Enable it with **K** or its row while playing survivor.
+An identified melee attack or lunge-hold animation triggers the equipped dagger's
+existing `ParryClient` when its killer is within 10 studs. Native readiness checks
+still apply, including cooldown, silence, health and other actions. Each observed
+attack gets at most one attempt. The inspected Veil melee animation IDs and the
+shared `attack`/`lungehold` track names are recognized; custom attacks with other
+names/IDs are not guessed. Detection depends on animation replication reaching you.
+
+The parry status line shows **Call** (observed attack cue to native parry call) and
+**reply** (call to receipt of `parryResult`), plus success/failure. Reply time includes
+network travel, server handling and the parry resolution window; it is not a server
+processing time or a one-way latency measurement. No server timestamp is exposed
+by this result signal. The last 12 samples are available through
+`getgenv().ViolenceDistrictLogic.getParryDiagnostics()`.
+
 The GUI uses maximum display order in CoreGui when supported by the executor,
 with a fallback to its hidden UI container or PlayerGui.
 
@@ -49,7 +65,7 @@ hiding, disabling, or destroying it removes that modal state. It never writes
 ## Local build
 
 Run `node scripts/build_bundle.mjs` to produce `build/violence-district.luau`.
-Execute that file's contents in the connected client. It includes all three
+Execute that file's contents in the connected client. It includes all four
 feature modules. Rerunning preserves switches, skill mode, panel position,
 and visibility, and replaces the old GUI.
 
@@ -60,6 +76,9 @@ The standalone build lets you run local changes before pushing them.
 ## Checks
 
 - `node scripts/check_luau_syntax.mjs` checks source syntax.
+- `scripts/test_auto_parry.luau` uses isolated signals and a native-client double
+  to check range, readiness, request/reply timing, repeated cues and cleanup.
+  It does not parry or send remotes in the live game.
 - `scripts/test_spear_aim.luau` checks interception against a separate stepwise
   flight simulation, unreachable targets, cursor selection, and invalid targets.
 - `scripts/test_spear_aim_lifecycle.luau` uses a fake camera and render scheduler

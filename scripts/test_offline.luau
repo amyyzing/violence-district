@@ -84,6 +84,7 @@ globals.ViolenceDistrictLogic = {
 }
 local logic = assert(loadfile("features/logic.luau"))()
 print(assert(loadfile("scripts/test_spear_aim.luau"))()(logic))
+print(assert(loadfile("scripts/test_auto_parry.luau"))()(assert(loadfile("features/auto_parry.luau"))()))
 -- Replay irregular physics steps: the weighted correction should match integration.
 local falling, fallingVelocity, flightAge = 0, 0, 0
 for index = 1, 32 do

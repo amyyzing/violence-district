@@ -1,0 +1,207 @@
+-- Observe replicated melee wind-ups, then use the already-running dagger client.
+return function(context)
+	local feature = {}
+	local players, player = context.players, context.player
+	local connections, watchers, cues, history = {}, {}, {}, {}
+	local pending, nativeClient
+	local lastClientSearch = -math.huge
+	local now = context.clock or os.clock
+	local spawn = context.spawn or function(callback) task.spawn(callback) end
+	local status = "Off"
+	local attackIds = { ["78935059863801"] = true, ["122812055447896"] = true }
+	local function report(text)
+		if status == text then return end
+		status = text
+		context.report(text)
+	end
+	local function connect(list, signal, callback)
+		local connection = signal:Connect(callback)
+		list[#list + 1] = connection
+		return connection
+	end
+	local function disconnect(list)
+		for _, connection in ipairs(list) do connection:Disconnect() end
+		table.clear(list)
+	end
+	local function equipped(client)
+		return client and client.character == player.Character and client.tool
+			and client.tool:IsDescendantOf(player.Character)
+	end
+	function feature._findClient()
+		if equipped(nativeClient) then return nativeClient end
+		nativeClient = nil
+		if now() - lastClientSearch < 0.5 then return nil end
+		lastClientSearch = now()
+		if type(getconnections) ~= "function" or type(getupvalues) ~= "function" then return nil end
+		for _, connection in ipairs(getconnections(context.input.InputBegan)) do
+			if connection.Function then
+				local ok, values = pcall(getupvalues, connection.Function)
+				if ok then
+					for _, value in pairs(values) do
+						if type(value) == "table" and rawget(value, "player") == player
+							and rawget(value, "tool") and type(value.CanUse) == "function"
+							and type(value.Parry) == "function" and equipped(value) then
+							nativeClient = value
+							return value
+						end
+					end
+				end
+			end
+		end
+	end
+	function feature._observe(killer, track, existing)
+		local name = track.Name:lower()
+		local id = track.Animation and track.Animation.AnimationId:match("%d+")
+		if name ~= "attack" and name ~= "lungehold" and not attackIds[id] then return end
+		local age = existing and track.TimePosition / math.max(math.abs(track.Speed), 0.001) or 0
+		cues[killer] = { track = track, character = killer.Character, at = now() - age, observedAt = now(), used = false }
+		if not nativeClient then lastClientSearch = -math.huge end
+		feature._step()
+	end
+	function feature._result(success, cooldown)
+		if not pending or not pending.callAt then return end
+		local sample = pending
+		pending = nil
+		sample.replyMs = (now() - sample.callAt) * 1000
+		sample.success, sample.cooldown = success == true, tonumber(cooldown)
+		history[#history + 1] = sample
+		if #history > 12 then table.remove(history, 1) end
+		report(string.format("Call %.0fms | reply %.0fms | %s", sample.localMs, sample.replyMs,
+			sample.success and "parried" or "not parried"))
+	end
+	function feature._step()
+		if not context.getEnabled() then return end
+		if pending then
+			if now() - (pending.callAt or pending.cueAt) > 3 then
+				pending.timeout = true
+				history[#history + 1] = pending
+				if #history > 12 then table.remove(history, 1) end
+				pending = nil
+				report("No parry result within 3s")
+			end
+			return
+		end
+		if not player.Team or not player.Team.Name:lower():match("^survivor") then
+			report("Survivors only")
+			return
+		end
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if not root or not humanoid or humanoid.Health <= 0 then return end
+		if not character:FindFirstChild("Parrying Dagger", true) then report("No equipped dagger") return end
+		local client = feature._findClient()
+		if not client then report("Dagger client unavailable") return end
+		local ok, ready = pcall(client.CanUse, client)
+		if not ok or not ready then
+			if #history == 0 then report(client.isParryOnCooldown and "Dagger cooldown" or "Dagger not ready") end
+			return
+		end
+		for killer, cue in pairs(cues) do
+			local enemy = killer.Character
+			local enemyRoot = enemy and enemy:FindFirstChild("HumanoidRootPart")
+			local enemyHumanoid = enemy and enemy:FindFirstChildOfClass("Humanoid")
+			local age = now() - cue.at
+			if enemy ~= cue.character or age > 0.8 or not cue.track.IsPlaying or not enemyRoot then
+				cues[killer] = nil
+			elseif not cue.used and killer.Team and killer.Team.Name == "Killer"
+				and enemyHumanoid and enemyHumanoid.Health > 0 and not enemy:GetAttribute("IsStunned")
+				and (enemyRoot.Position - root.Position).Magnitude <= 10 then
+				cue.used = true
+				local sample = { killer = killer.Name, cueAt = cue.observedAt, distance = (enemyRoot.Position - root.Position).Magnitude }
+				pending = sample
+				spawn(function()
+					if not context.getEnabled() or pending ~= sample or not equipped(client) then
+						if pending == sample then pending = nil end
+						return
+					end
+					sample.callAt = now()
+					sample.localMs = (sample.callAt - sample.cueAt) * 1000
+					report(string.format("Call %.0fms | awaiting result", sample.localMs))
+					local accepted, err = pcall(client.Parry, client)
+					if not accepted and pending == sample then
+						pending = nil
+						sample.error = tostring(err)
+						report("Native parry failed")
+					elseif pending == sample and not client.isParryResolving then
+						pending = nil
+						report("Native parry not accepted")
+					end
+				end)
+				return
+			end
+		end
+		if #history == 0 then report("Ready | watching attacks") end
+	end
+	local function unwatch(other)
+		local watcher = watchers[other]
+		if not watcher then return end
+		disconnect(watcher.connections)
+		disconnect(watcher.characterConnections)
+		watchers[other], cues[other] = nil, nil
+	end
+	local function watch(other)
+		if other == player or watchers[other] then return end
+		local watcher = { connections = {}, characterConnections = {} }
+		watchers[other] = watcher
+		local function bind(character)
+			disconnect(watcher.characterConnections)
+			cues[other] = nil
+			local bound
+			local function animatorAdded(animator)
+				if not animator:IsA("Animator") or bound == animator then return end
+				bound = animator
+				connect(watcher.characterConnections, animator.AnimationPlayed, function(track)
+					if other.Team and other.Team.Name == "Killer" then feature._observe(other, track) end
+				end)
+				if other.Team and other.Team.Name == "Killer" then
+					for _, track in ipairs(animator:GetPlayingAnimationTracks()) do feature._observe(other, track, true) end
+				end
+			end
+			connect(watcher.characterConnections, character.DescendantAdded, animatorAdded)
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+			if animator then animatorAdded(animator) end
+		end
+		connect(watcher.connections, other.CharacterAdded, bind)
+		if other.Character then bind(other.Character) end
+	end
+	local function stop()
+		disconnect(connections)
+		local others = {}
+		for other in pairs(watchers) do others[#others + 1] = other end
+		for _, other in ipairs(others) do unwatch(other) end
+		table.clear(cues)
+		pending, nativeClient = nil, nil
+		lastClientSearch = -math.huge
+	end
+	local function start()
+		local folder = context.storage:FindFirstChild("Remotes")
+		folder = folder and folder:FindFirstChild("Items")
+		folder = folder and folder:FindFirstChild("Parrying Dagger")
+		local result = folder and folder:FindFirstChild("parryResult")
+		if result then connect(connections, result.OnClientEvent, feature._result) end
+		connect(connections, players.PlayerAdded, watch)
+		connect(connections, players.PlayerRemoving, unwatch)
+		connect(connections, context.runService.Heartbeat, feature._step)
+		connect(connections, player.CharacterAdded, function()
+			pending, nativeClient = nil, nil
+			lastClientSearch = -math.huge
+			table.clear(cues)
+		end)
+		for _, other in ipairs(players:GetPlayers()) do watch(other) end
+		feature._step()
+	end
+	function feature.setEnabled(value)
+		value = value == true
+		if value == context.getEnabled() then return end
+		context.setEnabled(value)
+		if value then start() else stop() report("Off") end
+		context.emit()
+	end
+	function feature.toggle() feature.setEnabled(not context.getEnabled()) end
+	function feature.getDiagnostics() return { status = status, pending = pending, history = history } end
+	function feature.destroy() stop() end
+	if context.getEnabled() then start() end
+	return feature
+end

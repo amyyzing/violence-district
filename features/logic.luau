@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 84
+local VERSION = 85
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -30,6 +30,7 @@ if existing then
 	safeCall(existing.setPathTreeEnabled, false)
 	safeCall(existing.setProjectileVisualiserEnabled, false)
 	safeCall(existing.setSpearAimEnabled, false)
+	safeCall(existing.setAutoParryEnabled, false)
 
 	if existing.destroy then
 		existing.destroy()
@@ -46,6 +47,8 @@ if existing then
 		existing.setProjectileVisualiserEnabled = noop
 		existing.setSpearAimEnabled = noop
 		existing.toggleSpearAim = noop
+		existing.setAutoParryEnabled = noop
+		existing.toggleAutoParry = noop
 	end)
 
 	if globalState then
@@ -113,12 +116,15 @@ K.FEATURE_MODULE_FILES = {
 	Highlights = "highlights.luau",
 	ProjectileVisualiser = "projectile_visualiser.luau",
 	SkillCheck = "skill_check.luau",
+	AutoParry = "auto_parry.luau",
 }
 
 local highlightsEnabled = previousState and previousState.highlightsEnabled == true or false
 local skillCheckEnabled = previousState and previousState.skillCheckEnabled == true or false
 local projectileVisualiserEnabled = previousState and previousState.projectileVisualiserEnabled == true or false
 local spearAimEnabled = previousState and previousState.spearAimEnabled == true or false
+local autoParryEnabled = previousState and previousState.autoParryEnabled == true or false
+local autoParryStatus = "Off"
 local skillCheckMode = previousState and previousState.skillCheckMode or K.DEFAULT_SKILL_MODE
 local started = false
 local active = true
@@ -175,6 +181,8 @@ local function copyState()
 		skillCheckEnabled = skillCheckEnabled,
 		projectileVisualiserEnabled = projectileVisualiserEnabled,
 		spearAimEnabled = spearAimEnabled,
+		autoParryEnabled = autoParryEnabled,
+		autoParryStatus = autoParryStatus,
 		skillCheckMode = skillCheckMode,
 	}
 end
@@ -1386,8 +1394,8 @@ function Logic._loadFeatureModule(name, fallbackFactory, context)
 			loadFailure = result
 		end
 	end
-	if name == "SkillCheck" and not factory then
-		error("Failed to load Skill Check module: " .. tostring(loadFailure), 0)
+	if (name == "SkillCheck" or name == "AutoParry") and not factory then
+		error("Failed to load " .. name .. " module: " .. tostring(loadFailure), 0)
 	end
 
 	factory = factory or fallbackFactory
@@ -1395,8 +1403,8 @@ function Logic._loadFeatureModule(name, fallbackFactory, context)
 	if ok and type(feature) == "table" then
 		return feature
 	end
-	if name == "SkillCheck" then
-		error("Failed to initialize Skill Check module: " .. tostring(feature), 0)
+	if name == "SkillCheck" or name == "AutoParry" then
+		error("Failed to initialize " .. name .. " module: " .. tostring(feature), 0)
 	end
 
 	return fallbackFactory(context)
@@ -1455,6 +1463,14 @@ function Logic._installFeatureModules()
 		getEnabled = function() return spearAimEnabled end,
 		setEnabled = function(value) spearAimEnabled = value end,
 		apply = Logic._refreshSpearAim,
+		emit = emitState,
+	})
+	featureModules.AutoParry = Logic._loadFeatureModule("AutoParry", nil, {
+		players = Players, player = LP, input = UserInputService,
+		storage = ReplicatedStorage, runService = RunService,
+		getEnabled = function() return autoParryEnabled end,
+		setEnabled = function(value) autoParryEnabled = value end,
+		report = function(text) autoParryStatus = text emitState() end,
 		emit = emitState,
 	})
 
@@ -1519,6 +1535,21 @@ function Logic.setSkillCheckEnabled(on)
 	featureModules.SkillCheck.setEnabled(on)
 end
 
+function Logic.setAutoParryEnabled(on)
+	Logic._installFeatureModules()
+	featureModules.AutoParry.setEnabled(on)
+end
+
+function Logic.toggleAutoParry()
+	Logic._installFeatureModules()
+	featureModules.AutoParry.toggle()
+end
+
+function Logic.getParryDiagnostics()
+	Logic._installFeatureModules()
+	return featureModules.AutoParry.getDiagnostics()
+end
+
 function Logic.toggleSkillCheck()
 	Logic._installFeatureModules()
 	featureModules.SkillCheck.toggle()
@@ -1572,6 +1603,8 @@ function Logic.start()
 				Logic.toggleProjectileVisualiser()
 			elseif input.KeyCode == Enum.KeyCode.J then
 				Logic.toggleSpearAim()
+			elseif input.KeyCode == Enum.KeyCode.K then
+				Logic.toggleAutoParry()
 			end
 		end
 	end))

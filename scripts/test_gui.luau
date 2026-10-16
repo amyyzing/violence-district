@@ -26,6 +26,7 @@ return function()
 		{ "SkillCheck", "skillCheckEnabled", logic.setSkillCheckEnabled },
 		{ "Projectile", "projectileVisualiserEnabled", logic.setProjectileVisualiserEnabled },
 		{ "SpearAim", "spearAimEnabled", logic.setSpearAimEnabled },
+		{ "AutoParry", "autoParryEnabled", logic.setAutoParryEnabled },
 	}
 	local ok, err = pcall(function()
 		expect(not content.Features:FindFirstChild("PathTreeRow") and logic.setPathTreeEnabled == nil, "Path feature was not removed")
@@ -78,7 +79,7 @@ return function()
 		expect(keyboardToggle ~= nil, "GUI keyboard toggle was not found")
 		local sawShrink = false
 		local sizeConnection = panel:GetPropertyChangedSignal("Size"):Connect(function()
-			if panel.Size.Y.Offset < 328 and panel.Size.Y.Offset > 44 then sawShrink = true end
+			if panel.Size.Y.Offset < content.Size.Y.Offset and panel.Size.Y.Offset > 44 then sawShrink = true end
 		end)
 		keyboardToggle({ KeyCode = Enum.KeyCode.RightControl }, false)
 		expect(not controller.getState().enabled and not content.Interactable, "Keyboard minimize did not start")

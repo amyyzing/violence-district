@@ -2,8 +2,8 @@ local LOGIC_KEY = "ViolenceDistrictLogic"
 local GUI_KEY = "ViolenceDistrictGui"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local LOGIC_VERSION = 84
-local PANEL_HEIGHT = 328
+local LOGIC_VERSION = 85
+local PANEL_HEIGHT = 398
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -204,7 +204,7 @@ end
 make("Frame", "Divider", panel, { Position = UDim2.fromOffset(20, 64), Size = UDim2.fromOffset(308, 1), BackgroundColor3 = C.line })
 
 local group = make("Frame", "Features", panel, {
-	Position = UDim2.fromOffset(20, 80), Size = UDim2.fromOffset(308, 184), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(20, 80), Size = UDim2.fromOffset(308, 230), BackgroundColor3 = C.surface,
 })
 corner(group, 10)
 local channels = {
@@ -212,6 +212,7 @@ local channels = {
 	{ id = "SkillCheck", title = "Skill check", hotkey = "G", key = "skillCheckEnabled", set = Logic.setSkillCheckEnabled },
 	{ id = "Projectile", title = "Projectile preview", hotkey = "H", key = "projectileVisualiserEnabled", set = Logic.setProjectileVisualiserEnabled },
 	{ id = "SpearAim", title = "Spear aim", hotkey = "J", key = "spearAimEnabled", set = Logic.setSpearAimEnabled },
+	{ id = "AutoParry", title = "Auto parry", hotkey = "K", key = "autoParryEnabled", set = Logic.setAutoParryEnabled },
 }
 for index, channel in ipairs(channels) do
 	local row = button(group, channel.id .. "Row", "", 0, (index - 1) * 46, 308, 46)
@@ -237,7 +238,7 @@ for index, channel in ipairs(channels) do
 	end
 end
 
-local healingCounter = label(panel, "HealingCounter", "Heal —/100", 20, 278, 135, 34, 12, C.accent, Enum.Font.GothamMedium)
+local healingCounter = label(panel, "HealingCounter", "Heal —/100", 20, 324, 135, 34, 12, C.accent, Enum.Font.GothamMedium)
 healingCounter.TextXAlignment = Enum.TextXAlignment.Center
 local function updateHealingCounter()
 	if destroyed then return end
@@ -281,7 +282,7 @@ end)
 bindHealingCharacter(LP.Character)
 
 local modeGroup = make("Frame", "Mode", panel, {
-	Position = UDim2.fromOffset(152, 278), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(152, 324), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
 })
 corner(modeGroup, 9)
 local modeButtons = {}
@@ -291,7 +292,9 @@ for index, mode in ipairs({ "Normal", "Perfect" }) do
 	modeButtons[mode] = option
 	connect(option.Activated, function() Logic.setSkillCheckMode(mode) end)
 end
+local parryTiming = label(panel, "ParryTiming", "Parry: off", 20, 366, 308, 18, 11, C.muted)
 local function render(state)
+	parryTiming.Text = state.autoParryEnabled and (state.autoParryStatus or "Watching attacks") or "Parry: off"
 	aimFovEnabled = state.spearAimEnabled == true
 	updateAimFov()
 	for _, channel in ipairs(channels) do
