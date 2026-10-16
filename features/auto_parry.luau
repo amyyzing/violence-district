@@ -3,7 +3,7 @@ return function(context)
 	local feature = {}
 	local players, player = context.players, context.player
 	local connections, watchers, cues, history = {}, {}, {}, {}
-	local pending, nativeClient
+	local pending, nativeClient, stepConnection
 	local lastClientSearch = -math.huge
 	local now = context.clock or os.clock
 	local spawn = context.spawn or function(callback) task.spawn(callback) end
@@ -26,6 +26,9 @@ return function(context)
 	local function equipped(client)
 		return client and client.character == player.Character and client.tool
 			and client.tool:IsDescendantOf(player.Character)
+	end
+	local function stopStepping()
+		if stepConnection then stepConnection:Disconnect() stepConnection = nil end
 	end
 	function feature._findClient()
 		if equipped(nativeClient) then return nativeClient end
@@ -55,7 +58,7 @@ return function(context)
 		if name ~= "attack" and name ~= "lungehold" and not attackIds[id] then return end
 		local age = existing and track.TimePosition / math.max(math.abs(track.Speed), 0.001) or 0
 		cues[killer] = { track = track, character = killer.Character, at = now() - age, observedAt = now(), used = false }
-		if not nativeClient then lastClientSearch = -math.huge end
+		if not stepConnection then stepConnection = context.runService.Heartbeat:Connect(feature._step) end
 		feature._step()
 	end
 	function feature._result(success, cooldown)
@@ -71,6 +74,7 @@ return function(context)
 	end
 	function feature._step()
 		if not context.getEnabled() then return end
+		if not pending and next(cues) == nil then stopStepping() return end
 		if pending then
 			if now() - (pending.callAt or pending.cueAt) > 3 then
 				pending.timeout = true
@@ -82,19 +86,17 @@ return function(context)
 			return
 		end
 		if not player.Team or not player.Team.Name:lower():match("^survivor") then
+			table.clear(cues)
+			stopStepping()
 			report("Survivors only")
 			return
 		end
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		if not root or not humanoid or humanoid.Health <= 0 then return end
-		if not character:FindFirstChild("Parrying Dagger", true) then report("No equipped dagger") return end
-		local client = feature._findClient()
-		if not client then report("Dagger client unavailable") return end
-		local ok, ready = pcall(client.CanUse, client)
-		if not ok or not ready then
-			if #history == 0 then report(client.isParryOnCooldown and "Dagger cooldown" or "Dagger not ready") end
+		if not root or not humanoid or humanoid.Health <= 0 then
+			table.clear(cues)
+			stopStepping()
 			return
 		end
 		for killer, cue in pairs(cues) do
@@ -102,11 +104,20 @@ return function(context)
 			local enemyRoot = enemy and enemy:FindFirstChild("HumanoidRootPart")
 			local enemyHumanoid = enemy and enemy:FindFirstChildOfClass("Humanoid")
 			local age = now() - cue.at
-			if enemy ~= cue.character or age > 0.8 or not cue.track.IsPlaying or not enemyRoot then
+			if cue.used or enemy ~= cue.character or age > 0.8 or not cue.track.IsPlaying or not enemyRoot then
 				cues[killer] = nil
 			elseif not cue.used and killer.Team and killer.Team.Name == "Killer"
 				and enemyHumanoid and enemyHumanoid.Health > 0 and not enemy:GetAttribute("IsStunned")
 				and (enemyRoot.Position - root.Position).Magnitude <= 15 then
+				-- Native readiness checks and executor scans only run for an actual nearby threat.
+				if not character:FindFirstChild("Parrying Dagger", true) then report("No equipped dagger") return end
+				local client = feature._findClient()
+				if not client then report("Dagger client unavailable") return end
+				local ok, ready = pcall(client.CanUse, client)
+				if not ok or not ready then
+					if #history == 0 then report(client.isParryOnCooldown and "Dagger cooldown" or "Dagger not ready") end
+					return
+				end
 				cue.used = true
 				local sample = { killer = killer.Name, cueAt = cue.observedAt, distance = (enemyRoot.Position - root.Position).Magnitude }
 				pending = sample
@@ -131,7 +142,7 @@ return function(context)
 				return
 			end
 		end
-		if #history == 0 then report("Ready | watching attacks") end
+		if next(cues) == nil then stopStepping() end
 	end
 	local function unwatch(other)
 		local watcher = watchers[other]
@@ -147,6 +158,7 @@ return function(context)
 		local function bind(character)
 			disconnect(watcher.characterConnections)
 			cues[other] = nil
+			if not other.Team or other.Team.Name ~= "Killer" then return end
 			local bound
 			local function animatorAdded(animator)
 				if not animator:IsA("Animator") or bound == animator then return end
@@ -164,9 +176,13 @@ return function(context)
 			if animator then animatorAdded(animator) end
 		end
 		connect(watcher.connections, other.CharacterAdded, bind)
+		connect(watcher.connections, other:GetPropertyChangedSignal("Team"), function()
+			if other.Character then bind(other.Character) end
+		end)
 		if other.Character then bind(other.Character) end
 	end
 	local function stop()
+		stopStepping()
 		disconnect(connections)
 		local others = {}
 		for other in pairs(watchers) do others[#others + 1] = other end
@@ -176,6 +192,7 @@ return function(context)
 		lastClientSearch = -math.huge
 	end
 	local function start()
+		report("Watching attacks")
 		local folder = context.storage:FindFirstChild("Remotes")
 		folder = folder and folder:FindFirstChild("Items")
 		folder = folder and folder:FindFirstChild("Parrying Dagger")
@@ -183,7 +200,6 @@ return function(context)
 		if result then connect(connections, result.OnClientEvent, feature._result) end
 		connect(connections, players.PlayerAdded, watch)
 		connect(connections, players.PlayerRemoving, unwatch)
-		connect(connections, context.runService.Heartbeat, feature._step)
 		connect(connections, player.CharacterAdded, function()
 			pending, nativeClient = nil, nil
 			lastClientSearch = -math.huge

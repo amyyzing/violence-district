@@ -37,6 +37,8 @@ return function(factory)
 	local enemy, enemyRoot, enemyHumanoid = character(16)
 	local player = { Name = "Local", Character = localCharacter, Team = { Name = "Survivors" }, CharacterAdded = signal() }
 	local killer = { Name = "Killer", Character = enemy, Team = { Name = "Killer" }, CharacterAdded = signal() }
+	local teamChanged = signal()
+	function killer:GetPropertyChangedSignal() return teamChanged end
 	local players = { PlayerAdded = signal(), PlayerRemoving = signal(), GetPlayers = function() return { player, killer } end }
 	local reply, heartbeat = signal(), signal()
 	local folder = { FindFirstChild = function(self, name)
@@ -45,7 +47,8 @@ return function(factory)
 	end }
 	local client = { player = player, character = localCharacter, blocked = false, isParryResolving = false }
 	client.tool = { IsDescendantOf = function(_, model) return model == localCharacter and localCharacter.dagger end }
-	function client:CanUse() return not self.blocked and not self.isParryResolving end
+	local readinessChecks, clientSearches = 0, 0
+	function client:CanUse() readinessChecks = readinessChecks + 1 return not self.blocked and not self.isParryResolving end
 	function client:Parry() calls = calls + 1 self.isParryResolving = true end
 	local text, deferred, queue = "", false, {}
 	local input = {}
@@ -65,7 +68,7 @@ return function(factory)
 		connection:Disconnect() event:Destroy()
 		expect(found == client, "Could not discover the native-client callback upvalue")
 	end
-	feature._findClient = function() return client end
+	feature._findClient = function() clientSearches = clientSearches + 1 return client end
 	local function track(name)
 		return { Name = name or "attack", IsPlaying = true, TimePosition = 0, Speed = 1,
 			Animation = { AnimationId = "rbxassetid://1" } }
@@ -77,13 +80,21 @@ return function(factory)
 	feature._step()
 	expect(calls == 0 and heartbeat:count() == 0, "Disabled feature subscribed or activated")
 	feature.setEnabled(true)
-	expect(heartbeat:count() == 1, "Enable did not install observer")
+	expect(heartbeat:count() == 0, "Idle enable installed a Heartbeat loop")
 	feature.setEnabled(true)
-	expect(heartbeat:count() == 1, "Repeated enable duplicated observer")
+	expect(heartbeat:count() == 0, "Repeated idle enable installed a Heartbeat loop")
+	for _ = 1, 1000 do heartbeat:Fire() end
+	expect(clientSearches == 0 and readinessChecks == 0, "Idle feature searched callbacks or checked native readiness")
+	killer.Team.Name = "Survivors" teamChanged:Fire()
+	expect(enemy.DescendantAdded:count() == 0, "Survivor retained character animation monitoring")
+	killer.Team.Name = "Killer" teamChanged:Fire()
+	expect(enemy.DescendantAdded:count() == 1, "Killer role change did not restore character monitoring")
 	feature._observe(killer, track("RunAnim"))
 	expect(calls == 0, "Non-attack animation triggered parry")
 	feature._observe(killer, track())
 	expect(calls == 0, "Killer outside 15 studs triggered parry")
+	expect(clientSearches == 0 and readinessChecks == 0, "Distant attack performed expensive native checks")
+	expect(heartbeat:count() == 1, "Attack cue did not install range monitoring")
 	enemyRoot.Position = Vector3.new(15, 0, 0)
 	clock = clock + 0.02
 	heartbeat:Fire()
@@ -98,6 +109,7 @@ return function(factory)
 		"Reply result or observed round-trip timing is incorrect")
 	heartbeat:Fire()
 	expect(calls == 1, "Same attack triggered twice")
+	expect(heartbeat:count() == 0, "Resolved cue retained the Heartbeat loop")
 	client.blocked = true
 	feature._observe(killer, track("lungehold"))
 	expect(calls == 1, "Blocked native dagger was activated")
@@ -109,6 +121,7 @@ return function(factory)
 	clock = clock + 0.81
 	heartbeat:Fire()
 	expect(calls == 1, "Expired attack cue triggered parry")
+	expect(heartbeat:count() == 0, "Expired cue retained the Heartbeat loop")
 	local stopped = track() stopped.IsPlaying = false
 	feature._observe(killer, stopped)
 	expect(calls == 1, "Stopped animation triggered parry")
@@ -126,6 +139,7 @@ return function(factory)
 	player.Team.Name = "Survivors"
 	feature._observe(killer, track())
 	expect(calls == 2, "Fresh attack did not activate")
+	expect(feature.getDiagnostics().pending.localMs == 0, "Attack event introduced a polling delay")
 	clock = clock + 0.1 result(false)
 	expect(feature.getDiagnostics().history[2].success == false, "Failed parry reported success")
 	feature._observe(killer, track())

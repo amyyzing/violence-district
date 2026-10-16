@@ -51,6 +51,9 @@ still apply, including cooldown, silence, health and other actions. Each observe
 attack gets at most one attempt. The inspected Veil melee animation IDs and the
 shared `attack`/`lungehold` track names are recognized; custom attacks with other
 names/IDs are not guessed. Detection depends on animation replication reaching you.
+The Heartbeat monitor runs only while an attack cue or reply is pending. Idle
+observation uses animation events, and native dagger checks run only for a cue
+within 15 studs. Animation listeners attach only to killers.
 
 The parry status line shows **Call** (observed attack cue to native parry call) and
 **reply** (call to receipt of `parryResult`), plus success/failure. Reply time includes
