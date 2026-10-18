@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-18",
+  "logicVersion": 90,
+  "assetMetadata": {
+    "129784271201071": "LungeHold-jeff",
+    "132817836308238": "Attack-jeff"
+  },
+  "manualResults": [
+    {
+      "success": false,
+      "cooldown": 60
+    },
+    {
+      "success": true,
+      "cooldown": 90
+    }
+  ],
+  "automaticAttempt": {
+    "replicatedTrackName": "Animation",
+    "cueAnimationId": "129784271201071",
+    "distance": 11.37535285949707,
+    "health": 60,
+    "nativeReadyAtCue": true,
+    "cueToNativeCallMs": 0.06939999730093405,
+    "attackAnimationAfterCueMs": 103.00310000457,
+    "replyMs": 854.7114000029978,
+    "success": false,
+    "cooldown": 60
+  },
+  "limits": [
+    "Outgoing parry arguments were not captured by the connector.",
+    "The automatic attempt was accepted locally but did not parry the killer.",
+    "This single failed result does not establish facing, hit timing, or whether the swing connected."
+  ]
+}

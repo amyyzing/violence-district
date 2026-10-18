@@ -190,3 +190,14 @@ Arc lines and the smaller impact marker now use normal scene depth rather
 than drawing through walls. The projectile target highlight is also occluded.
 Ordinary trajectories stop at valid collisions; powered trajectories retain the
 game's wall piercing, with hidden portions obscured by world geometry.
+
+An October 18 round capture identified Jeff's generic replicated `Animation`
+tracks using Roblox asset metadata: `129784271201071` is `LungeHold-jeff`, and
+`132817836308238` is `Attack-jeff`. Both IDs now trigger attack detection.
+One automatic attempt at 11.38 studs reached the native dagger client in about
+0.07 ms; the result arrived about 855 ms later as `false, 60`. Separate manual
+attempts returned `false, 60` and `true, 90`. This verifies automatic activation,
+not a successful automatic parry. Facing, hit timing and an unconnected swing
+remain possible explanations for the failed result. A compact record is saved
+in `scripts/fixtures/parry_2026_10_18.json`. The temporary round logger was stopped
+when the player left the survivor team.
