@@ -36,6 +36,29 @@ return function()
 	end
 	expect(keyboardToggle ~= nil, "GUI keyboard toggle was not found")
 	local function toggle() keyboardToggle({ KeyCode = Enum.KeyCode.RightControl }, false) end
+	local dragMove
+	for _, c in pairs(getconnections(input.InputChanged)) do
+		if c.Function then
+			for _, value in pairs(getupvalues(c.Function)) do
+				if type(value) == "function" then
+					for _, nested in pairs(getupvalues(value)) do if nested == panel then dragMove = c.Function end end
+				end
+			end
+		end
+	end
+	local function dragCube(delta)
+		assert(dragMove, "Drag movement callback missing")
+		local click = { UserInputType = Enum.UserInputType.MouseButton1, Position = Vector3.new(100, 100, 0) }
+		for _, c in pairs(getconnections(panel.Reopen.InputBegan)) do if c.Function then c.Function(click) end end
+		dragMove({ UserInputType = Enum.UserInputType.MouseMovement, Position = click.Position + Vector3.new(delta.X, delta.Y, 0) })
+		for _, c in pairs(getconnections(input.InputEnded)) do
+			if c.Function then
+				for _, value in pairs(getupvalues(c.Function)) do
+					if type(value) == "table" and value.input == click then c.Function(click) break end
+				end
+			end
+		end
+	end
 	local fields = {
 		{ "Highlights", "highlightsEnabled", logic.setHighlightsEnabled },
 		{ "SkillCheck", "skillCheckEnabled", logic.setSkillCheckEnabled },
@@ -137,6 +160,18 @@ return function()
 		expect((panel.AbsolutePosition - cube.AbsolutePosition).Magnitude < 0.1 and
 			(panel.AbsoluteSize - cube.AbsoluteSize).Magnitude < 0.1, "Cube did not match the main frame")
 		expect(math.abs(panel.AbsoluteSize.X - 44) < 0.1 and math.abs(panel.AbsoluteSize.Y - 44) < 0.1, "Cube size was incorrect")
+		local beforeCube, beforeFull = panel.Position, controller.getState().position
+		local viewport = gui.AbsoluteSize
+		local delta = Vector2.new(beforeCube.X.Offset + 24 < viewport.X - 52 and 24 or -24,
+			beforeCube.Y.Offset + 16 < viewport.Y - 52 and 16 or -16)
+		dragCube(delta)
+		local movedCube = panel.Position
+		expect(not controller.getState().enabled and movedCube ~= beforeCube, "Dragging cube did not move it while minimized")
+		expect(controller.getState().position == beforeFull, "Cube drag moved the maximized menu position")
+		toggle() finishTransition()
+		toggle() finishTransition()
+		expect(panel.Position == movedCube, "Minimize forgot the dragged cube position")
+		dragCube(Vector2.new(beforeCube.X.Offset - movedCube.X.Offset, beforeCube.Y.Offset - movedCube.Y.Offset))
 		keyboardToggle({ KeyCode = Enum.KeyCode.RightControl }, false)
 		finishTransition()
 		expect(controller.getState().enabled and content.DragHandle.Modal, "Keyboard reopen failed")

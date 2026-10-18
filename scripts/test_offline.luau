@@ -188,7 +188,8 @@ assert(not visuals.Arc1.AlwaysOnTop and visuals.Arc1.ZIndex == -1, "Arc still fo
 assert(visuals:FindFirstChild("ArcPoint1") == nil, "Dotted markers were not removed")
 assert(visuals.Beam.Transparency == 1 and visuals.Beam.Length == 0, "Cosmetic connector is still visible")
 assert((visuals.Arc1.CFrame.Position - curve[1]).Magnitude < 0.00001, "First physical curve segment is missing")
-for index = 1, #curve - 1 do
+assert(not visuals:FindFirstChild("Arc55"), "Invisible arc tail was allocated")
+for index = 1, math.min(54, #curve - 1) do
 	local beam = assert(visuals:FindFirstChild("Arc" .. index), "Physical arc segment missing")
 	assert((beam.CFrame.Position - curve[index]).Magnitude < 0.00001, "Drawn segment starts outside the calculated path")
 	assert((beam.CFrame.Position + beam.CFrame.LookVector * beam.Length - curve[index + 1]).Magnitude < 0.00001, "Drawn segment ends outside the calculated path")

@@ -176,7 +176,7 @@ return function(capture)
 		expect(visuals.Beam.Length == 0, "Cosmetic connector still has length")
 		expect((visuals.Arc1.CFrame.Position - points[1]).Magnitude < 0.001, "The first physical curve segment was skipped")
 		expect((visuals.Arc1.CFrame.Position + visuals.Arc1.CFrame.LookVector * visuals.Arc1.Length - points[2]).Magnitude < 0.001, "First physical segment misses its sample")
-		for index = 1, #points - 1 do
+		for index = 1, math.min(54, #points - 1) do
 			local beam = visuals:FindFirstChild("Arc" .. index)
 			expect(beam ~= nil, "Physical arc segment missing")
 			expect((beam.CFrame.Position - points[index]).Magnitude < 0.001, "Drawn segment starts outside the calculated flight path")
@@ -184,7 +184,7 @@ return function(capture)
 		end
 		expect(visuals:FindFirstChild("ArcPoint1") == nil, "Dotted path markers remain")
 		expect(#points == 161, "Curve no longer samples every 0.025 seconds")
-		expect(visuals.Arc54.Transparency < 1 and visuals.Arc55.Transparency == 1, "Long tail obscures the curved preview")
+		expect(visuals.Arc54.Transparency < 1 and not visuals:FindFirstChild("Arc55"), "Long tail obscures the curved preview")
 		logic._setProjectileArc({ release, release + Vector3.new(0, 0, -1) }, visualOrigin, Color3.new(1, 1, 1))
 		for _, object in ipairs(visuals:GetChildren()) do
 			if object.Name:match("^Arc") and object.Name ~= "Arc1" then expect(object.Transparency == 1, "Shorter path left old segments visible") end

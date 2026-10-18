@@ -32,7 +32,7 @@ return function(source)
 	local logic = chunk()
 	local stopped = Instance.new("BindableEvent")
 	local function animation(id)
-		for _, connection in ipairs(getconnections(animator.AnimationPlayed)) do
+		for _, connection in pairs(getconnections(animator.AnimationPlayed)) do
 			if connection.Function then connection.Function({ Animation = { AnimationId = "rbxassetid://" .. id }, Stopped = stopped.Event }) end
 		end
 	end
@@ -80,7 +80,25 @@ return function(source)
 		expect(not bindings.CateyesSpearAim, "Disabling feature retained camera lock")
 		logic.setSpearAimEnabled(true)
 		expect(bindings.CateyesSpearAim ~= nil, "Re-enabling during charge did not bind aim")
+		for _ = 1, 40 do
+			animation("92098503722633")
+			expect(#getconnections(stopped.Event) == 1, "Repeated charges accumulated stop listeners")
+			animation("93136435416899")
+			expect(#getconnections(stopped.Event) == 0, "Throw retained the hold-stop listener")
+		end
+		for index = 1, 20 do
+			local previous, previousAnimator = player.Character, animator
+			local nextCharacter, nextAnimator = character(Vector3.new(index, 3, 0))
+			nextCharacter:SetAttribute("spearmode", true)
+			player.Character, animator = nextCharacter, nextAnimator
+			logic._watchProjectileCharacter(nextCharacter)
+			task.wait()
+			expect(#getconnections(previousAnimator.AnimationPlayed) == 0, "Respawn retained old animator listener")
+			expect(#getconnections(previous:GetAttributeChangedSignal("spearmode")) == 0, "Respawn retained old weapon listener")
+			expect(#getconnections(animator.AnimationPlayed) == 1, "Respawn did not install exactly one animator listener")
+		end
 		logic.destroy()
+		expect(#getconnections(animator.AnimationPlayed) == 0 and #getconnections(stopped.Event) == 0, "Destroy leaked projectile listeners")
 		expect(not bindings.CateyesSpearAim, "Destroy retained camera lock")
 	end)
 	pcall(logic.destroy)

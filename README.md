@@ -18,6 +18,7 @@ refresh as your role, character or equipped item changes.
 Choose **Normal** or **Perfect** beside the healing counter; the selection slides
 between modes. Drag the exposed menu background to move the panel. **Right Control**
 maximizes or minimizes the same panel into its icon cube in 0.4 seconds.
+The minimized cube is also draggable and remembers its own position across reloads.
 The panel automatically fits smaller viewports.
 
 Skill checks react to needle rotation updates and use the game's full great-hit
@@ -201,3 +202,17 @@ not a successful automatic parry. Facing, hit timing and an unconnected swing
 remain possible explanations for the failed result. A compact record is saved
 in `scripts/fixtures/parry_2026_10_18.json`. The temporary round logger was stopped
 when the player left the survivor team.
+
+The October 18 resource audit scoped spear animation listeners to the current
+character, releases hold-stop listeners after each charge, and cancels the map
+resync worker on destruction. The FOV frame updater runs only while needed;
+unchanged state updates no longer restart feature/mode tweens. The preview
+allocates at most 54 visible arc segments instead of 160, while retaining the
+full 160-step collision prediction and the same displayed curve.
+
+`scripts/test_gui_resources.luau` checks 25 isolated UI reloads for stable object
+and listener counts. `scripts/test_logic_resources.luau` checks 15 logic
+start/destroy cycles, feature toggles, and worker/listener cleanup. The fake-camera
+lifecycle test also exercises 40 charges/releases and 20 respawns. These checks
+cover resource lifetimes and repeated work; they do not establish FPS or memory
+usage on every device during a long game session.

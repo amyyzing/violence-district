@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 90
+local VERSION = 92
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -136,6 +136,8 @@ local pendingGeneratorConnections = {}
 local playerConnections = {}
 local mapConnections = {}
 local connections = {}
+local projectileCharacterConnections = {}
+local projectileHoldStopped, projectileAnimator, resyncThread
 
 local mapContainer
 local projectilePreviewFolder
@@ -761,6 +763,7 @@ local function setProjectileHolding(inputHolding, animationHolding)
 		projectileHoldStartClock = os.clock()
 		spearAimTarget, spearAimReleaseUntil = nil, 0
 	elseif not nextHolding then
+		if projectileHoldStopped then projectileHoldStopped:Disconnect() projectileHoldStopped = nil end
 		if projectileThrowHolding and spearAimTarget then spearAimReleaseUntil = os.clock() + 0.15 end
 		projectileHoldStartClock = 0
 	end
@@ -873,7 +876,7 @@ function Logic._spearIntercept(origin, target, targetVelocity, speed, gravity, f
 	end
 	local function errorAt(t)
 		local delta = displacement(t)
-		return delta.Magnitude * delta.Magnitude - speed * speed * t * t
+		return delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z - speed * speed * t * t
 	end
 	local function solve(before, after)
 		for _ = 1, 24 do
@@ -1166,7 +1169,8 @@ function Logic._setProjectileArc(points, _visualOrigin, color)
 	Logic._projectileBeam().Transparency = 1
 	projectileBeamAdornment.Length = 0
 	local sampleTime = K.PROJECTILE_FLIGHT_TIME / K.PROJECTILE_ARC_STEPS
-	for index = 1, #points - 1 do
+	local visibleSegments = math.min(#points - 1, math.floor(K.PROJECTILE_PREVIEW_TIME / sampleTime + 0.000001))
+	for index = 1, visibleSegments do
 		local beam = projectileArcBeams[index]
 		if not beam then
 			beam = Logic._projectileBeam():Clone()
@@ -1181,7 +1185,7 @@ function Logic._setProjectileArc(points, _visualOrigin, color)
 		local time = index * sampleTime
 		beam.Transparency = time <= K.PROJECTILE_PREVIEW_TIME and (0.14 + time / K.PROJECTILE_PREVIEW_TIME * 0.35) or 1
 	end
-	for index = #points, #projectileArcBeams do projectileArcBeams[index].Transparency = 1 end
+	for index = visibleSegments + 1, #projectileArcBeams do projectileArcBeams[index].Transparency = 1 end
 end
 
 function Logic._setProjectileTargetHighlight(model)
@@ -1293,11 +1297,9 @@ function Logic._watchProjectileAnimations(character)
 		end)
 		animator = ok and result or nil
 	end
-	if not animator then
-		return
-	end
-
-	trackConnection(animator.AnimationPlayed:Connect(function(track)
+	if not animator or not active or character ~= getCharacter() or projectileAnimator == animator then return end
+	projectileAnimator = animator
+	table.insert(projectileCharacterConnections, animator.AnimationPlayed:Connect(function(track)
 		if not active or character ~= getCharacter() then return end
 		local animationId = projectileTrackAnimationId(track)
 		if not animationId then
@@ -1307,9 +1309,15 @@ function Logic._watchProjectileAnimations(character)
 		if K.PROJECTILE_HOLD_ANIMATION_IDS[animationId] then
 			if projectileWeaponActive() then
 				setProjectileHolding(nil, true)
-				trackConnection(track.Stopped:Connect(function()
+				if projectileHoldStopped then projectileHoldStopped:Disconnect() end
+				local stoppedConnection
+				stoppedConnection = track.Stopped:Connect(function()
+					if projectileHoldStopped ~= stoppedConnection then return end
+					stoppedConnection:Disconnect()
+					projectileHoldStopped = nil
 					if active and character == getCharacter() then setProjectileHolding(nil, false) end
-				end))
+				end)
+				projectileHoldStopped = stoppedConnection
 			end
 		elseif K.PROJECTILE_THROW_ANIMATION_IDS[animationId] then
 			setProjectileHolding(false, false)
@@ -1317,12 +1325,18 @@ function Logic._watchProjectileAnimations(character)
 	end))
 end
 
-function Logic._watchProjectileCharacter(character)
-	if not character then
-		return
-	end
+local function clearProjectileCharacterConnections()
+	for _, connection in ipairs(projectileCharacterConnections) do connection:Disconnect() end
+	table.clear(projectileCharacterConnections)
+	if projectileHoldStopped then projectileHoldStopped:Disconnect() projectileHoldStopped = nil end
+	projectileAnimator = nil
+end
 
-	trackConnection(character:GetAttributeChangedSignal("spearmode"):Connect(function()
+function Logic._watchProjectileCharacter(character)
+	if character and character ~= getCharacter() then return end
+	clearProjectileCharacterConnections()
+	if not character or not active then return end
+	table.insert(projectileCharacterConnections, character:GetAttributeChangedSignal("spearmode"):Connect(function()
 		if not active or character ~= getCharacter() then return end
 		if character:GetAttribute("spearmode") ~= true then
 			setProjectileHolding(false, false)
@@ -1633,14 +1647,20 @@ function Logic.start()
 		setProjectileHolding(false, false)
 		Logic._refreshProjectileVisualiser()
 	end))
+	trackConnection(LP.CharacterRemoving:Connect(function()
+		clearProjectileCharacterConnections()
+		setProjectileHolding(false, false)
+		stopSpearAim()
+	end))
 	trackConnection(UserInputService.WindowFocusReleased:Connect(function()
 		setProjectileHolding(false, false)
 		stopSpearAim()
 	end))
 
-	task.spawn(function()
+	resyncThread = task.spawn(function()
 		while active do
 			task.wait(K.MAP_RESYNC_INTERVAL)
+			if not active then break end
 			if highlightsEnabled then
 				applyPlayers()
 				resyncMap()
@@ -1661,6 +1681,8 @@ function Logic.destroy()
 	end
 
 	active = false
+	if resyncThread then task.cancel(resyncThread) resyncThread = nil end
+	clearProjectileCharacterConnections()
 	for _, feature in pairs(featureModules) do
 		safeCall(feature.destroy)
 	end

@@ -2,7 +2,7 @@ local LOGIC_KEY = "ViolenceDistrictLogic"
 local GUI_KEY = "ViolenceDistrictGui"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local LOGIC_VERSION = 90
+local LOGIC_VERSION = 92
 local PANEL_HEIGHT = 318
 local TRANSITION_TIME = 0.4
 
@@ -104,6 +104,7 @@ if not mounted and type(gethui) == "function" then
 end
 if not mounted then sg.Parent = PG end
 local aimFovEnabled = false
+local aimFovConnection
 local aimFov = make("Frame", "SpearAimFov", sg, {
 	AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, Visible = false,
 	Size = UDim2.fromOffset(Logic.SpearAimFovRadius * 2, Logic.SpearAimFovRadius * 2),
@@ -111,13 +112,22 @@ local aimFov = make("Frame", "SpearAimFov", sg, {
 make("UICorner", "Corner", aimFov, { CornerRadius = UDim.new(0.5, 0) })
 make("UIStroke", "Outline", aimFov, { Color = C.accent, Thickness = 1, Transparency = 0.35 })
 local function updateAimFov()
-	aimFov.Visible = aimFovEnabled
 	if aimFovEnabled then
 		local position = UserInputService:GetMouseLocation() - sg.AbsolutePosition
 		aimFov.Position = UDim2.fromOffset(position.X, position.Y)
 	end
 end
-connect(game:GetService("RunService").RenderStepped, updateAimFov)
+local function syncAimFov()
+	local visible = aimFovEnabled and sg.Enabled and not destroyed
+	aimFov.Visible = visible
+	if visible and not aimFovConnection then
+		aimFovConnection = game:GetService("RunService").RenderStepped:Connect(updateAimFov)
+	elseif not visible and aimFovConnection then
+		aimFovConnection:Disconnect()
+		aimFovConnection = nil
+	end
+	if visible then updateAimFov() end
+end
 panel = make("Frame", "Panel", sg, {
 	Size = UDim2.fromOffset(348, PANEL_HEIGHT), BackgroundColor3 = Color3.fromRGB(8, 9, 13), BackgroundTransparency = 0.65,
 	Position = previousGuiState and previousGuiState.position or UDim2.fromOffset(48, 80),
@@ -273,22 +283,25 @@ end
 local function render(state)
 	availability = Logic.getFeatureAvailability()
 	aimFovEnabled = state.spearAimEnabled == true and availability.spearAimEnabled == true
-	updateAimFov()
+	syncAimFov()
 	for _, channel in ipairs(channels) do
 		local available = availability[channel.key] ~= false
 		local on = available and state[channel.key] == true
 		channel.row.Interactable = available
 		channel.label.TextColor3 = available and C.text or C.disabled
 		channel.hotkeyLabel.TextColor3 = available and C.muted or C.disabled
-		tween(channel.mark, { Rotation = on and 45 or 0, BackgroundColor3 = on and C.accent or C.line })
+		if channel.on ~= on then
+			channel.on = on
+			tween(channel.mark, { Rotation = on and 45 or 0, BackgroundColor3 = on and C.accent or C.line })
+		end
 	end
 	if selectedMode ~= state.skillCheckMode then
 		selectedMode = state.skillCheckMode
 		tween(modeSelection, { Position = UDim2.fromOffset(selectedMode == "Perfect" and 88 or 3, 3) }, 0.18)
-	end
-	for mode, option in pairs(modeButtons) do
-		local selected = state.skillCheckMode == mode
-		tween(option, { TextColor3 = selected and C.panel or C.muted }, 0.18)
+		for mode, option in pairs(modeButtons) do
+			local selected = state.skillCheckMode == mode
+			tween(option, { TextColor3 = selected and C.panel or C.muted }, 0.18)
+		end
 	end
 end
 local availabilityElapsed = 0
@@ -303,7 +316,7 @@ connect(game:GetService("RunService").Heartbeat, function(dt)
 end)
 local expanded = panel.Visible
 local fullPosition = panel.Position
-local cubePosition = UDim2.fromOffset(12, 180)
+local cubePosition = previousGuiState and previousGuiState.cubePosition or UDim2.fromOffset(12, 180)
 local animating = false
 local content = make("CanvasGroup", "Content", panel, {
 	Size = UDim2.fromOffset(348, PANEL_HEIGHT), BackgroundTransparency = 1,
@@ -322,7 +335,8 @@ local function fitPanel()
 	local y = fullPosition.Y.Scale * viewport.Y + fullPosition.Y.Offset
 	fullPosition = UDim2.fromOffset(math.clamp(x, 8, math.max(8, viewport.X - 348 * scale.Scale - 8)),
 		math.clamp(y, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - PANEL_HEIGHT * scale.Scale - 8)))
-	cubePosition = UDim2.fromOffset(12, math.clamp(180, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 52)))
+	cubePosition = UDim2.fromOffset(math.clamp(cubePosition.X.Offset, 8, math.max(8, viewport.X - 52)),
+		math.clamp(cubePosition.Y.Offset, inset.Y + 8, math.max(inset.Y + 8, viewport.Y - 52)))
 	if not animating then
 		panel.Position = expanded and fullPosition or cubePosition
 		panel.Size = expanded and UDim2.fromOffset(348, PANEL_HEIGHT) or UDim2.fromOffset(44 / scale.Scale, 44 / scale.Scale)
@@ -356,17 +370,21 @@ local function transition(visible)
 		syncVisibility()
 	end)
 end
-connect(header.InputBegan, function(input)
-	if expanded and not animating and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+local function beginDrag(input)
+	if not animating and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
 		drag = { input = input, start = input.Position, position = panel.Position }
 	end
-end)
+end
+reopen.Active = true
+connect(header.InputBegan, beginDrag)
+connect(reopen.InputBegan, beginDrag)
 connect(UserInputService.InputChanged, function(input)
-	if not drag or not expanded or animating then return end
+	if not drag or animating then return end
 	local mouseMove = drag.input.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement
 	if input ~= drag.input and not mouseMove then return end
 	local delta = input.Position - drag.start
-	fullPosition = drag.position + UDim2.fromOffset(delta.X, delta.Y)
+	local position = drag.position + UDim2.fromOffset(delta.X, delta.Y)
+	if expanded then fullPosition = position else cubePosition = position end
 	fitPanel()
 end)
 connect(UserInputService.InputEnded, function(input) if drag and input == drag.input then drag = nil end end)
@@ -374,7 +392,7 @@ connect(UserInputService.WindowFocusReleased, function()
 	drag = nil
 end)
 connect(Logic.Changed, render)
-connect(sg:GetPropertyChangedSignal("Enabled"), syncVisibility)
+connect(sg:GetPropertyChangedSignal("Enabled"), function() syncVisibility() syncAimFov() end)
 connect(sg:GetPropertyChangedSignal("AbsoluteSize"), fitPanel)
 connect(UserInputService.InputBegan, function(input, processed)
 	if not processed and not UserInputService:GetFocusedTextBox() and input.KeyCode == Enum.KeyCode.RightControl then
@@ -383,11 +401,12 @@ connect(UserInputService.InputBegan, function(input, processed)
 end)
 local controller = { Gui = sg }
 function controller.getState()
-	return { enabled = expanded, position = fullPosition }
+	return { enabled = expanded, position = fullPosition, cubePosition = cubePosition }
 end
 function controller.destroy()
 	if destroyed then return end
 	destroyed = true
+	syncAimFov()
 	drag = nil
 	syncVisibility()
 	for _, connection in ipairs(connections) do connection:Disconnect() end
