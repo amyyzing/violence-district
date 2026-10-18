@@ -12,6 +12,7 @@ return function(context)
 	local generation = 0
 	local status = "Off"
 	-- Replicated tracks may be named only "Animation". Match inspected attack assets too.
+	local holdIds = { ["122812055447896"] = true, ["129784271201071"] = true }
 	local attackIds = {
 		["78935059863801"] = true, ["122812055447896"] = true, -- Veil
 		["129784271201071"] = true, ["132817836308238"] = true, -- Jeff lunge/attack
@@ -90,7 +91,7 @@ return function(context)
 		if name ~= "attack" and name ~= "lungehold" and not attackIds[id] then return end
 		local age = existing and track.TimePosition / math.max(math.abs(track.Speed), 0.001) or 0
 		local character = killer.Character
-		cues[killer] = { track = track, character = character, at = now() - age, observedAt = now(), used = false,
+		cues[killer] = { track = track, character = character, at = now() - age, observedAt = now(), holding = name == "lungehold" or holdIds[id] == true,
 			root = character and character:FindFirstChild("HumanoidRootPart"),
 			humanoid = character and character:FindFirstChildOfClass("Humanoid") }
 		if not stepConnection then stepConnection = context.runService.Heartbeat:Connect(feature._step) end
@@ -145,7 +146,7 @@ return function(context)
 		if not client then stopStepping() return end
 		local character = player.Character
 		local root, humanoid = client.rootPart, client.humanoid
-		if not root or not humanoid or humanoid.Health <= 0 then
+		if client.character ~= character or not root or not humanoid or humanoid.Health <= 0 then
 			table.clear(cues)
 			stopStepping()
 			return
@@ -154,9 +155,11 @@ return function(context)
 			local enemy = killer.Character
 			local enemyRoot, enemyHumanoid = cue.root, cue.humanoid
 			local age = now() - cue.at
-			if cue.used or enemy ~= cue.character or age > 0.8 or not cue.track.IsPlaying or not enemyRoot then
+			if enemy ~= cue.character or not cue.track.IsPlaying or not enemyRoot
+				or (not cue.holding and age > 0.8) or not killer.Team or killer.Team.Name ~= "Killer"
+				or not enemyHumanoid or enemyHumanoid.Health <= 0 then
 				cues[killer] = nil
-			elseif killer.Team and killer.Team.Name == "Killer" and enemyHumanoid and enemyHumanoid.Health > 0 then
+			else
 				local delta = enemyRoot.Position - root.Position
 				if readyAtRange(killer, client, enemy, delta) then
 					local sample = { killer = killer.Name, cueAt = cue.observedAt, distance = delta.Magnitude }

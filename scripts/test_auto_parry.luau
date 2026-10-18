@@ -194,6 +194,52 @@ return function(factory)
 			"Blocked cue performed repeated readiness or parry work")
 		client[item[1]] = false
 	end
+	local beforeLongHold = calls
+	enemyRoot.Position = Vector3.new(16, 0, 0)
+	local held = track("lungehold")
+	feature._observe(killer, held)
+	clock = clock + 3
+	heartbeat:Fire()
+	expect(calls == beforeLongHold and heartbeat:count() == 1, "Long hold was lost or activated outside 15 studs")
+	enemyRoot.Position = Vector3.new(15, 0, 0)
+	heartbeat:Fire()
+	expect(calls == beforeLongHold + 1, "Entering 15 studs after a long hold did not parry")
+	result(false)
+	enemyRoot.Position = Vector3.new(16, 0, 0) heartbeat:Fire()
+	enemyRoot.Position = Vector3.new(14, 0, 0) heartbeat:Fire()
+	expect(calls == beforeLongHold + 1 and heartbeat:count() == 0, "Same held signal repeated the attempt")
+	for _, id in ipairs({ "122812055447896", "129784271201071" }) do
+		local existingHold = track("Animation")
+		existingHold.Animation.AnimationId = "rbxassetid://" .. id
+		existingHold.TimePosition = 4
+		local before = calls
+		feature._observe(killer, existingHold, true)
+		expect(calls == before + 1, "Already-playing generic melee hold was treated as expired")
+		result(false)
+	end
+	local function cancelledHold(change, message)
+		enemyRoot.Position = Vector3.new(16, 0, 0)
+		local hold = track("lungehold")
+		local before = calls
+		feature._observe(killer, hold)
+		clock = clock + 2
+		change(hold)
+		enemyRoot.Position = Vector3.new(14, 0, 0)
+		heartbeat:Fire()
+		expect(calls == before and heartbeat:count() == 0, message)
+	end
+	cancelledHold(function(hold) hold.IsPlaying = false end, "Cancelled long hold triggered or retained its monitor")
+	cancelledHold(function() enemyHumanoid.Health = 0 end, "Dead killer retained its held cue")
+	enemyHumanoid.Health = 100
+	cancelledHold(function() killer.Team.Name = "Survivors" end, "Role change retained a held attack monitor")
+	killer.Team.Name = "Killer"
+	enemyRoot.Position = Vector3.new(16, 0, 0)
+	local beforeExpired = calls
+	feature._observe(killer, track("attack"))
+	clock = clock + 1
+	enemyRoot.Position = Vector3.new(14, 0, 0)
+	heartbeat:Fire()
+	expect(calls == beforeExpired and heartbeat:count() == 0, "Completed swing was incorrectly kept as a persistent hold")
 	deferred = true
 	feature._observe(killer, track())
 	local before = calls

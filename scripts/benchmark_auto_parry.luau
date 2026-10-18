@@ -4,7 +4,7 @@ local vectorMeta = {}
 local function position(x) return setmetatable({ X = x, Y = 0, Z = 0 }, vectorMeta) end
 vectorMeta.__sub = function(a, b) return position(a.X - b.X) end
 vectorMeta.__index = function(v, key) if key == "Magnitude" then return math.abs(v.X) end end
-local function measure(factory, nearby)
+local function measure(factory, nearby, holding)
 	local function signal()
 		local callbacks = {}
 		return {
@@ -28,7 +28,7 @@ local function measure(factory, nearby)
 		FindFirstChild = function(_, name) lookups = lookups + 1 return name == "HumanoidRootPart" and root or {} end,
 		FindFirstChildOfClass = function() lookups = lookups + 1 return humanoid end,
 	}
-	local enemyRoot = { Position = position(10) }
+	local enemyRoot = { Position = position(holding and 16 or 10) }
 	local enemy = {
 		DescendantAdded = signal(), DescendantRemoving = signal(),
 		FindFirstChild = function() lookups = lookups + 1 return enemyRoot end,
@@ -53,7 +53,7 @@ local function measure(factory, nearby)
 	feature.setEnabled(true)
 	lookups, searches, readiness = 0, 0, 0
 	local start = os.clock()
-	if nearby then feature._observe(killer, { Name = "attack", IsPlaying = true, Animation = { AnimationId = "rbxassetid://1" } }) end
+	if nearby or holding then feature._observe(killer, { Name = holding and "lungehold" or "attack", IsPlaying = true, Animation = { AnimationId = "rbxassetid://1" } }) end
 	for _ = 1, 20000 do heartbeat:Fire() end
 	local ms = (os.clock() - start) * 1000
 	feature.destroy()
@@ -63,4 +63,5 @@ for _, path in ipairs(arg) do
 	local factory = assert(loadfile(path))()
 	print(path .. " idle: " .. measure(factory, false))
 	print(path .. " nearby blocked attack: " .. measure(factory, true))
+	print(path .. " active hold outside range: " .. measure(factory, false, true))
 end
