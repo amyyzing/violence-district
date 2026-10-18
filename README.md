@@ -40,7 +40,7 @@ Generator paths and the F hotkey have been removed.
 **Spear aim** starts off. Enable it with **J** or its row, then charge a Veil
 throw. It selects the standing survivor nearest the cursor on screen and keeps
 that target for the charge. The intercept uses the current charge speed,
-target root velocity, half gravity, velocity-first integration, and an estimated
+filtered movement velocity, half gravity, velocity-first integration, and an estimated
 one-way network delay. The camera follows the launch direction until 0.15 seconds
 after release; switching weapons, losing focus, or disabling the feature releases
 it immediately. The feature never throws or sends a weapon remote for you.
@@ -233,3 +233,15 @@ regular attempts: one successful and one unsuccessful. In the unsuccessful
 attempt, Jeff faced away and moved from 6.36 studs at the cue to 18.64 studs
 when the swing started. The trigger still uses an attack cue within 15 studs;
 there is no closing-distance requirement.
+
+Spear aim now keeps a short, bounded movement history (at most 10 samples).
+Its horizontal lead follows a roughly 0.1-second position baseline and reduces
+commitment when recent movement reverses or doubles back. The two horizontal
+axes are evaluated separately, so lateral zigzags do not suppress steady forward
+travel. A stopped target loses its old lead over the short measurement window; tight
+circles and tiny replication jitter receive less lead. Facing changes alone do
+not imply movement. Steady movement regains full lead, and teleports or stale
+samples reset the history. Brief gaps between replication packets do not reset
+the history or flip its last movement direction. The ballistic solver and arc physics are unchanged.
+Tests cover these traces at 30, 60, and 144 FPS; this is a conservative prediction
+of erratic movement, not knowledge of the target's next direction change.

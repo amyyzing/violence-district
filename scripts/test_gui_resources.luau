@@ -14,7 +14,7 @@ return function(source)
 	}
 	local state = { skillCheckMode = "Perfect" }
 	local logic = {
-		Version = 94, SpearAimFovRadius = 120, Changed = changed.Event,
+		Version = 96, SpearAimFovRadius = 120, Changed = changed.Event,
 		start = function() end, getState = function() return state end,
 		getFeatureAvailability = function() return { spearAimEnabled = true } end,
 	}

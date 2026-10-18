@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 94
+local VERSION = 96
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -934,14 +934,43 @@ function Logic._selectSpearAimTarget(camera, mouse, players)
 end
 
 function Logic._spearMotionVelocity(sample, position, now, grounded)
-	local elapsed = sample.time and now - sample.time or 0
-	if not sample.position or elapsed > 0.25 or elapsed < 0 then
-		sample.position, sample.time, sample.velocity = position, now, Vector3.zero
-	elseif elapsed >= 0.06 then
-		local movement = position - sample.position
-		-- Do not lead across teleports or replication corrections.
-		sample.velocity = movement.Magnitude <= 100 * elapsed and movement / elapsed or Vector3.zero
-		sample.position, sample.time = position, now
+	local samples = sample.samples or {}
+	sample.samples = samples
+	local last = samples[#samples]
+	local elapsed = last and now - last.time or 0
+	if not last or elapsed > 0.25 or elapsed < 0
+		or (elapsed >= 1 / 30 and (position - last.position).Magnitude > 100 * elapsed) then
+		table.clear(samples)
+		samples[1] = { position = position, time = now }
+		sample.velocity = Vector3.zero
+		sample.directionX, sample.directionZ = 0, 0
+	elseif elapsed >= 1 / 30 then
+		local instant = (position - last.position) / elapsed
+		samples[#samples + 1] = { position = position, time = now }
+		while #samples > 2 and samples[2].time < now - 0.24 do table.remove(samples, 1) end
+		while #samples > 10 do table.remove(samples, 1) end
+		local anchor = samples[1]
+		for index = #samples - 1, 1, -1 do
+			anchor = samples[index]
+			if now - anchor.time >= 0.10 - 0.000001 then break end
+		end
+		local measured = (position - anchor.position) / (now - anchor.time)
+		local travelX, travelZ = 0, 0
+		for index = 2, #samples do
+			local delta = samples[index].position - samples[index - 1].position
+			travelX, travelZ = travelX + math.abs(delta.X), travelZ + math.abs(delta.Z)
+		end
+		local net = position - samples[1].position
+		local confidence = math.min(1, (now - samples[1].time) / 0.12)
+		-- Reversals/loops lower commitment separately on each horizontal axis.
+		-- Keep the latest movement sign through a brief gap between replication packets.
+		if instant.X ~= 0 then sample.directionX = instant.X end
+		if instant.Z ~= 0 then sample.directionZ = instant.Z end
+		local x = sample.directionX * measured.X > 0 and travelX > 0.05
+			and measured.X * (math.abs(net.X) / travelX) ^ 2 * confidence or 0
+		local z = sample.directionZ * measured.Z > 0 and travelZ > 0.05
+			and measured.Z * (math.abs(net.Z) / travelZ) ^ 2 * confidence or 0
+		sample.velocity = Vector3.new(x, grounded and 0 or instant.Y, z)
 	end
 	local velocity = sample.velocity or Vector3.zero
 	if grounded then velocity = Vector3.new(velocity.X, 0, velocity.Z) end
