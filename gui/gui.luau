@@ -203,15 +203,15 @@ for index, channel in ipairs(channels) do
 end
 
 local healingCounter = make("Frame", "HealingCounter", panel, {
-	Position = UDim2.fromOffset(20, 258), Size = UDim2.fromOffset(135, 44), BackgroundTransparency = 1,
+	Position = UDim2.fromOffset(20, 267), Size = UDim2.fromOffset(135, 32), BackgroundTransparency = 1,
 })
 make("UIListLayout", "Layout", healingCounter, {
 	FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center,
 	VerticalAlignment = Enum.VerticalAlignment.Bottom, SortOrder = Enum.SortOrder.LayoutOrder,
 	Padding = UDim.new(0, 3),
 })
-local healingAmount = label(healingCounter, "Current", "—", 0, 0, 0, 44, 32, C.accent, Enum.Font.GothamBold)
-local healingTotal = label(healingCounter, "Total", "/100", 0, 0, 0, 40, 22, C.muted)
+local healingAmount = label(healingCounter, "Current", "—", 0, 0, 0, 32, 32, C.accent, Enum.Font.GothamBold)
+local healingTotal = label(healingCounter, "Total", "/100", 0, 0, 0, 22, 22, C.muted)
 healingAmount.AutomaticSize, healingTotal.AutomaticSize = Enum.AutomaticSize.X, Enum.AutomaticSize.X
 healingAmount.TextYAlignment, healingTotal.TextYAlignment = Enum.TextYAlignment.Bottom, Enum.TextYAlignment.Bottom
 healingTotal.LayoutOrder = 1

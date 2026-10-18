@@ -50,6 +50,14 @@ return function()
 		expect(not content:FindFirstChild("Title") and not content:FindFirstChild("Close") and not content:FindFirstChild("ParryTiming"), "Removed UI remained")
 		expect(panel.Reopen:IsA("Frame"), "Minimized cube remained clickable")
 		expect(content.HealingCounter.Current.TextSize > content.HealingCounter.Total.TextSize, "Healing numerator was not larger")
+		local counter = content.HealingCounter
+		local top, bottom = math.huge, -math.huge
+		for _, text in ipairs({ counter.Current, counter.Total }) do
+			local edge = text.AbsolutePosition.Y + text.AbsoluteSize.Y
+			top, bottom = math.min(top, edge - text.TextBounds.Y), math.max(bottom, edge)
+		end
+		expect(math.abs((top + bottom) / 2 - (content.Mode.AbsolutePosition.Y + content.Mode.AbsoluteSize.Y / 2)) < 1,
+			"Combined healing text bounds were not vertically centered with mode toggle")
 		for _, item in ipairs(fields) do expect(not content.Features[item[1] .. "Row"]:FindFirstChild("State"), "Feature status remained") end
 		for _, item in ipairs(fields) do
 			local row = content.Features[item[1] .. "Row"]
