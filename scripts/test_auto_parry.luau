@@ -24,7 +24,7 @@ return function(factory)
 	end
 	local function character(x)
 		local root = { Position = Vector3.new(x, 0, 0) }
-		local humanoid = { Health = 100, FindFirstChildOfClass = function() end }
+		local humanoid = { Health = 100, HealthChanged = signal(), IsA = function(_, class) return class == "Humanoid" end, FindFirstChildOfClass = function() end }
 		local model = { DescendantAdded = signal(), DescendantRemoving = signal(), dagger = true, stunned = false }
 		function model:FindFirstChild(name)
 			if name == "HumanoidRootPart" then return root end
@@ -240,6 +240,21 @@ return function(factory)
 	enemyRoot.Position = Vector3.new(14, 0, 0)
 	heartbeat:Fire()
 	expect(calls == beforeExpired and heartbeat:count() == 0, "Completed swing was incorrectly kept as a persistent hold")
+	local beforeUnknown = calls
+	for i = 1, 20 do feature._observe(killer, track("Unknown" .. i)) end
+	local evidence = feature.getDiagnostics().observations
+	expect(#evidence == 16 and evidence[16].recognized == false and evidence[16].distance == 14,
+		"Unknown nearby animation evidence was absent or unbounded")
+	expect(calls == beforeUnknown and heartbeat:count() == 0, "Unknown animation activated dagger or frame monitoring")
+	localHumanoid.HealthChanged:Fire(60)
+	local damage = feature.getDiagnostics().lastDamage
+	expect(damage and damage.from == 100 and damage.health == 60 and #damage.observations == 16 and damage.distances.Killer == 14,
+		"Damage did not snapshot recent nearby cue evidence")
+	localCharacter.DescendantRemoving:Fire({ Name = "Parrying Dagger" })
+	expect(feature.getDiagnostics().lastDamage == damage, "Unequipping discarded the missed-hit evidence")
+	clock = clock + 1
+	localCharacter.DescendantAdded:Fire({ Name = "Parrying Dagger", IsA = function() return false end })
+	clock = clock + 1 runTimers()
 	deferred = true
 	feature._observe(killer, track())
 	local before = calls

@@ -4,7 +4,8 @@ return function(context)
 	local getupvalues = getupvalues or (debug and debug.getupvalues)
 	local players, player = context.players, context.player
 	local connections, watchers, cues, history, itemConnections = {}, {}, {}, {}, {}
-	local pending, nativeClient, stepConnection, lastBlocked
+	local pending, nativeClient, stepConnection, lastBlocked, lastDamage
+	local observations = {}
 	local lastClientSearch = -math.huge
 	local now = context.clock or os.clock
 	local spawn = context.spawn or function(callback) task.spawn(callback) end
@@ -88,11 +89,21 @@ return function(context)
 	function feature._observe(killer, track, existing)
 		local name = track.Name:lower()
 		local id = track.Animation and track.Animation.AnimationId:match("%d+")
-		if name ~= "attack" and name ~= "lungehold" and not attackIds[id] then return end
-		local age = existing and track.TimePosition / math.max(math.abs(track.Speed), 0.001) or 0
+		local recognized = name == "attack" or name == "lungehold" or attackIds[id] == true
 		local character = killer.Character
+		local enemyRoot = character and character:FindFirstChild("HumanoidRootPart")
+		local localRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		local distance = enemyRoot and localRoot and (enemyRoot.Position - localRoot.Position).Magnitude
+		-- Bounded event-only evidence, retained through respawns; no asset lookups in combat.
+		if distance and distance <= 30 then
+			observations[#observations + 1] = { at = now(), killer = killer.Name, animationId = id,
+				name = track.Name, recognized = recognized, distance = distance, clientBound = equipped(nativeClient) == true }
+			if #observations > 16 then table.remove(observations, 1) end
+		end
+		if not recognized then return end
+		local age = existing and track.TimePosition / math.max(math.abs(track.Speed), 0.001) or 0
 		cues[killer] = { track = track, character = character, at = now() - age, observedAt = now(), holding = name == "lungehold" or holdIds[id] == true,
-			root = character and character:FindFirstChild("HumanoidRootPart"),
+			root = enemyRoot,
 			humanoid = character and character:FindFirstChildOfClass("Humanoid") }
 		if not stepConnection then stepConnection = context.runService.Heartbeat:Connect(feature._step) end
 		feature._step()
@@ -254,8 +265,41 @@ return function(context)
 		lastClientSearch = -math.huge
 		table.clear(cues)
 		stopStepping()
+		local boundHumanoid
+		local function bindHealth(humanoid)
+			if boundHumanoid == humanoid or not humanoid:IsA("Humanoid") then return end
+			boundHumanoid = humanoid
+			local previousHealth = humanoid.Health
+			connect(itemConnections, humanoid.HealthChanged, function(health)
+				if health < previousHealth then
+					local recent = {}
+					for _, cue in ipairs(observations) do
+						if now() - cue.at <= 3 then recent[#recent + 1] = cue end
+					end
+					local distances = {}
+					local root = character:FindFirstChild("HumanoidRootPart")
+					if root then
+						for killer in pairs(watchers) do
+							local enemy = killer.Character
+							local enemyRoot = enemy and enemy:FindFirstChild("HumanoidRootPart")
+							if killer.Team and killer.Team.Name == "Killer" and enemyRoot then
+								distances[killer.Name] = (enemyRoot.Position - root.Position).Magnitude
+							end
+						end
+					end
+					lastDamage = { at = now(), from = previousHealth, health = health, observations = recent, distances = distances,
+						status = status, clientBound = equipped(nativeClient) == true, pending = pending ~= nil,
+						cooldown = nativeClient and nativeClient.isParryOnCooldown == true,
+						resolving = nativeClient and nativeClient.isParryResolving == true }
+				end
+				previousHealth = health
+			end)
+		end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then bindHealth(humanoid) end
 		local refresh = 0
 		connect(itemConnections, character.DescendantAdded, function(item)
+			if item:IsA("Humanoid") then bindHealth(item) end
 			if item.Name == "Parrying Dagger" or item.Name == "Parry Dagger" then
 				refresh = refresh + 1
 				local token = refresh
@@ -297,7 +341,7 @@ return function(context)
 	end
 	function feature.toggle() feature.setEnabled(not context.getEnabled()) end
 	function feature.getDiagnostics()
-		return { status = status, pending = pending, history = history, lastBlocked = lastBlocked,
+		return { status = status, pending = pending, history = history, lastBlocked = lastBlocked, observations = observations, lastDamage = lastDamage,
 			clientBound = equipped(nativeClient) == true, monitoring = stepConnection ~= nil }
 	end
 	function feature.destroy() stop() nativeClient = nil end
