@@ -203,7 +203,7 @@ for index, channel in ipairs(channels) do
 end
 
 local healingCounter = make("Frame", "HealingCounter", panel, {
-	Position = UDim2.fromOffset(20, 267), Size = UDim2.fromOffset(135, 32), BackgroundTransparency = 1,
+	Position = UDim2.fromOffset(20, 262), Size = UDim2.fromOffset(135, 32), BackgroundTransparency = 1,
 })
 make("UIListLayout", "Layout", healingCounter, {
 	FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center,
