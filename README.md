@@ -15,9 +15,10 @@ refresh as your role, character or equipped item changes.
 | Spear aim | J |
 | Auto parry | K |
 
-Choose **Normal** or **Perfect** beside the healing counter. Drag the title to move
-the panel. **Right Control** or the minimize button hides it; the floating **CE**
-button reopens it. The panel automatically fits smaller viewports.
+Choose **Normal** or **Perfect** beside the healing counter; the selection slides
+between modes. Drag the blank top edge to move the panel. **Right Control**
+maximizes or minimizes the same panel into its icon cube in 0.4 seconds.
+The panel automatically fits smaller viewports.
 
 Skill checks react to needle rotation updates and use the game's full great-hit
 window. Perfect mode aims near its center; if a fast frame skips the great
@@ -59,7 +60,7 @@ the result. Animation listeners attach only to killers. The native dagger client
 is cached from its result-event callback during setup/equip, with bounded setup
 retries; attack processing never scans input callbacks or discovers that client.
 
-The parry status line shows **Call** (observed attack cue to native parry call) and
+Parry diagnostics expose **Call** (observed attack cue to native parry call) and
 **reply** (call to receipt of `parryResult`), plus success/failure. Reply time includes
 network travel, server handling and the parry resolution window; it is not a server
 processing time or a one-way latency measurement. No server timestamp is exposed

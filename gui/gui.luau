@@ -3,7 +3,8 @@ local GUI_KEY = "ViolenceDistrictGui"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
 local LOGIC_VERSION = 88
-local PANEL_HEIGHT = 398
+local PANEL_HEIGHT = 318
+local TRANSITION_TIME = 0.4
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -125,8 +126,7 @@ panel = make("Frame", "Panel", sg, {
 corner(panel, 14)
 make("UIStroke", "Outline", panel, { Color = C.line, Thickness = 1 })
 local scale = make("UIScale", "Scale", panel, { Scale = 1 })
-local reopen = button(panel, "Reopen", "", 0, 0, 44, 44, C.panel)
-reopen.TextColor3 = C.accent
+local reopen = make("Frame", "Reopen", panel, {})
 reopen.BackgroundTransparency = 1
 reopen.Size = UDim2.fromScale(1, 1)
 reopen.Visible = not panel.Visible
@@ -158,54 +158,12 @@ for index, span in ipairs({
 	})
 end
 
-local header = button(panel, "Title", "", 20, 14, 258, 38, C.panel)
-local brand = label(header, "Brand", "Cateyes", 0, 0, 258, 38, 23, C.text, Enum.Font.GothamBold)
-brand.TextXAlignment = Enum.TextXAlignment.Center
-brand.TextYAlignment = Enum.TextYAlignment.Center
-local close = button(panel, "Close", "", 296, 20, 32, 32, C.surface)
-corner(close, 9)
-local minimizeIcon = make("Frame", "MinimizeIcon", close, {
-	AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(20, 20), BackgroundTransparency = 1,
-})
-local minimizeScale = make("UIScale", "Scale", minimizeIcon, { Scale = 0.65 })
-local closeHovered, closePressed = false, false
-local function animateClose()
-	tween(close, { BackgroundColor3 = (closeHovered or closePressed) and C.hover or C.surface })
-	tween(minimizeScale, { Scale = closePressed and 0.55 or (closeHovered and 0.72 or 0.65) })
-end
-connect(close.MouseEnter, function() closeHovered = true animateClose() end)
-connect(close.MouseLeave, function() closeHovered, closePressed = false, false animateClose() end)
-connect(close.InputBegan, function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		closePressed = true
-		animateClose()
-	end
-end)
-connect(close.InputEnded, function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		closePressed = false
-		animateClose()
-	end
-end)
--- Four inward corners, matching the supplied minimize symbol without an asset download.
-for index, position in ipairs({ Vector2.new(0, 0), Vector2.new(12, 0), Vector2.new(12, 12), Vector2.new(0, 12) }) do
-	local segment = make("Frame", "Corner" .. index, minimizeIcon, {
-		Position = UDim2.fromOffset(position.X, position.Y), Size = UDim2.fromOffset(8, 8),
-		Rotation = (index - 1) * 90, BackgroundTransparency = 1,
-	})
-	for _, geometry in ipairs({ { 5, 0, 3, 8 }, { 0, 5, 8, 3 } }) do
-		local stroke = make("Frame", "Stroke", segment, {
-			Position = UDim2.fromOffset(geometry[1], geometry[2]), Size = UDim2.fromOffset(geometry[3], geometry[4]),
-			BackgroundColor3 = C.accent,
-		})
-		corner(stroke, 2)
-	end
-end
-make("Frame", "Divider", panel, { Position = UDim2.fromOffset(20, 64), Size = UDim2.fromOffset(308, 1), BackgroundColor3 = C.line })
+-- A blank top edge keeps dragging and native modal mouse handling without a title.
+local header = button(panel, "DragHandle", "", 0, 0, 348, 14, C.panel)
+header.BackgroundTransparency = 1
 
 local group = make("Frame", "Features", panel, {
-	Position = UDim2.fromOffset(20, 80), Size = UDim2.fromOffset(308, 230), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(20, 16), Size = UDim2.fromOffset(308, 230), BackgroundColor3 = C.surface,
 })
 corner(group, 10)
 local availability = Logic.getFeatureAvailability()
@@ -220,10 +178,9 @@ for index, channel in ipairs(channels) do
 	local row = button(group, channel.id .. "Row", "", 0, (index - 1) * 46, 308, 46)
 	corner(row, 10)
 	channel.label = label(row, "Label", channel.title, 14, 0, 174, 46, 13, C.text, Enum.Font.GothamMedium)
-	local key = label(row, "Hotkey", channel.hotkey, 190, 0, 20, 46, 11, C.muted)
+	local key = label(row, "Hotkey", channel.hotkey, 230, 0, 20, 46, 11, C.muted)
 	key.TextXAlignment = Enum.TextXAlignment.Center
 	channel.row, channel.hotkeyLabel = row, key
-	channel.status = label(row, "State", "Off", 226, 0, 32, 46, 11, C.muted)
 	local mark = make("Frame", "Mark", row, {
 		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(280, 23),
 		Size = UDim2.fromOffset(12, 12), BackgroundColor3 = C.line,
@@ -245,8 +202,19 @@ for index, channel in ipairs(channels) do
 	end
 end
 
-local healingCounter = label(panel, "HealingCounter", "Heal —/100", 20, 324, 135, 34, 12, C.accent, Enum.Font.GothamMedium)
-healingCounter.TextXAlignment = Enum.TextXAlignment.Center
+local healingCounter = make("Frame", "HealingCounter", panel, {
+	Position = UDim2.fromOffset(20, 258), Size = UDim2.fromOffset(135, 44), BackgroundTransparency = 1,
+})
+make("UIListLayout", "Layout", healingCounter, {
+	FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	VerticalAlignment = Enum.VerticalAlignment.Bottom, SortOrder = Enum.SortOrder.LayoutOrder,
+	Padding = UDim.new(0, 3),
+})
+local healingAmount = label(healingCounter, "Current", "—", 0, 0, 0, 44, 32, C.accent, Enum.Font.GothamBold)
+local healingTotal = label(healingCounter, "Total", "/100", 0, 0, 0, 40, 22, C.muted)
+healingAmount.AutomaticSize, healingTotal.AutomaticSize = Enum.AutomaticSize.X, Enum.AutomaticSize.X
+healingAmount.TextYAlignment, healingTotal.TextYAlignment = Enum.TextYAlignment.Bottom, Enum.TextYAlignment.Bottom
+healingTotal.LayoutOrder = 1
 local function updateHealingCounter()
 	if destroyed then return end
 	local humanoid = healingCharacter and healingCharacter:FindFirstChildOfClass("Humanoid")
@@ -259,9 +227,9 @@ local function updateHealingCounter()
 	if type(progress) == "number" then
 		progress = math.clamp(progress, 0, 100)
 		local amount = string.format("%.1f", progress):gsub("%.0$", "")
-		healingCounter.Text = "Heal " .. amount .. "/100"
+		healingAmount.Text = amount
 	else
-		healingCounter.Text = "Heal —/100"
+		healingAmount.Text = "—"
 	end
 end
 local function bindHealingCharacter(character)
@@ -289,20 +257,24 @@ end)
 bindHealingCharacter(LP.Character)
 
 local modeGroup = make("Frame", "Mode", panel, {
-	Position = UDim2.fromOffset(152, 324), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(152, 266), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
 })
 corner(modeGroup, 9)
+local modeSelection = make("Frame", "Selection", modeGroup, {
+	Position = UDim2.fromOffset(3, 3), Size = UDim2.fromOffset(85, 28), BackgroundColor3 = C.accent,
+})
+corner(modeSelection, 7)
+local selectedMode
 local modeButtons = {}
 for index, mode in ipairs({ "Normal", "Perfect" }) do
 	local option = button(modeGroup, mode, mode, 3 + (index - 1) * 85, 3, 85, 28)
 	corner(option, 7)
+	option.BackgroundTransparency, option.ZIndex = 1, 2
 	modeButtons[mode] = option
 	connect(option.Activated, function() Logic.setSkillCheckMode(mode) end)
 end
-local parryTiming = label(panel, "ParryTiming", "Parry: off", 20, 366, 308, 18, 11, C.muted)
 local function render(state)
 	availability = Logic.getFeatureAvailability()
-	parryTiming.Text = state.autoParryEnabled and (state.autoParryStatus or "Watching attacks") or "Parry: off"
 	aimFovEnabled = state.spearAimEnabled == true and availability.spearAimEnabled == true
 	updateAimFov()
 	for _, channel in ipairs(channels) do
@@ -311,15 +283,16 @@ local function render(state)
 		channel.row.Interactable = available
 		channel.label.TextColor3 = available and C.text or C.disabled
 		channel.hotkeyLabel.TextColor3 = available and C.muted or C.disabled
-		channel.status.Text = available and (on and "On" or "Off") or "—"
-		channel.status.TextColor3 = available and (on and C.accent or C.muted) or C.disabled
 		if not available then tween(channel.row, { BackgroundColor3 = C.surface }) end
 		tween(channel.mark, { Rotation = on and 45 or 0, BackgroundColor3 = on and C.accent or C.line })
 	end
+	if selectedMode ~= state.skillCheckMode then
+		selectedMode = state.skillCheckMode
+		tween(modeSelection, { Position = UDim2.fromOffset(selectedMode == "Perfect" and 88 or 3, 3) }, 0.18)
+	end
 	for mode, option in pairs(modeButtons) do
 		local selected = state.skillCheckMode == mode
-		option.BackgroundColor3 = selected and C.accent or C.surface
-		option.TextColor3 = selected and C.panel or C.muted
+		tween(option, { TextColor3 = selected and C.panel or C.muted }, 0.18)
 	end
 end
 local availabilityElapsed = 0
@@ -371,16 +344,14 @@ local function transition(visible)
 	if expanded and not animating then fullPosition = panel.Position end
 	expanded = visible
 	drag = nil
-	closeHovered, closePressed = false, false
-	animateClose()
 	animating = true
 	fitPanel()
 	syncVisibility()
-	tween(content, { GroupTransparency = visible and 0 or 1 }, 0.7)
+	tween(content, { GroupTransparency = visible and 0 or 1 }, TRANSITION_TIME)
 	local animation = tween(panel, {
 		Position = visible and fullPosition or cubePosition,
 		Size = visible and UDim2.fromOffset(348, PANEL_HEIGHT) or UDim2.fromOffset(44 / scale.Scale, 44 / scale.Scale),
-	}, 0.7, Enum.EasingDirection.InOut)
+	}, TRANSITION_TIME, Enum.EasingDirection.InOut)
 	task.spawn(function()
 		local result = animation.Completed:Wait()
 		if destroyed or tweens[panel] ~= animation or result ~= Enum.PlaybackState.Completed then return end
@@ -405,11 +376,7 @@ end)
 connect(UserInputService.InputEnded, function(input) if drag and input == drag.input then drag = nil end end)
 connect(UserInputService.WindowFocusReleased, function()
 	drag = nil
-	closeHovered, closePressed = false, false
-	animateClose()
 end)
-connect(close.Activated, function() transition(false) end)
-connect(reopen.Activated, function() transition(true) end)
 connect(Logic.Changed, render)
 connect(sg:GetPropertyChangedSignal("Enabled"), syncVisibility)
 connect(sg:GetPropertyChangedSignal("AbsoluteSize"), fitPanel)
