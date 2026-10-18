@@ -11,7 +11,11 @@ return function(context)
 	local delay = context.delay or function(seconds, callback) task.delay(seconds, callback) end
 	local generation = 0
 	local status = "Off"
-	local attackIds = { ["78935059863801"] = true, ["122812055447896"] = true }
+	-- Replicated tracks may be named only "Animation". Match inspected attack assets too.
+	local attackIds = {
+		["78935059863801"] = true, ["122812055447896"] = true, -- Veil
+		["129784271201071"] = true, ["132817836308238"] = true, -- Jeff lunge/attack
+	}
 	local function report(text)
 		if status == text then return end
 		status = text

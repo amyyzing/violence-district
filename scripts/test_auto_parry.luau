@@ -167,6 +167,19 @@ return function(factory)
 	clock = clock + 3.1 runTimers()
 	expect(feature.getDiagnostics().pending == nil and text == "No parry result within 3s", "Missing reply retained pending request")
 	client.isParryResolving = false
+	for _, id in ipairs({ "129784271201071", "132817836308238" }) do
+		local generic = track("Animation")
+		generic.Animation.AnimationId = "rbxassetid://" .. id
+		local beforeCalls = calls
+		feature._observe(killer, generic)
+		expect(calls == beforeCalls + 1, "Generic replicated Jeff attack track was missed")
+		result(false)
+	end
+	local idle = track("Animation")
+	idle.Animation.AnimationId = "rbxassetid://134758728973154"
+	local beforeCalls = calls
+	feature._observe(killer, idle)
+	expect(calls == beforeCalls, "Generic replicated idle track triggered parry")
 	deferred = true
 	feature._observe(killer, track())
 	local before = calls

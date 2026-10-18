@@ -49,8 +49,9 @@ No camera solution is applied when a target is unreachable at the current charge
 An identified melee attack or lunge-hold animation triggers the equipped dagger's
 existing `ParryClient` when its killer is within 15 studs. Native readiness checks
 still apply, including cooldown, silence, health and other actions. Each observed
-attack gets at most one attempt. The inspected Veil melee animation IDs and the
-shared `attack`/`lungehold` track names are recognized; custom attacks with other
+attack gets at most one attempt. The inspected Veil melee and Jeff attack/lunge animation IDs and the
+shared `attack`/`lungehold` track names are recognized, including generic replicated
+`Animation` tracks with those IDs; custom attacks with other
 names/IDs are not guessed. Detection depends on animation replication reaching you.
 The Heartbeat monitor runs only while an attack cue may enter range. Character
 parts are cached and the range check uses squared distance. Native readiness is
