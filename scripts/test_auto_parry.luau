@@ -167,7 +167,7 @@ return function(factory)
 	clock = clock + 3.1 runTimers()
 	expect(feature.getDiagnostics().pending == nil and text == "No parry result within 3s", "Missing reply retained pending request")
 	client.isParryResolving = false
-	for _, id in ipairs({ "129784271201071", "132817836308238" }) do
+	for _, id in ipairs({ "129784271201071", "132817836308238", "82666958311998" }) do
 		local generic = track("Animation")
 		generic.Animation.AnimationId = "rbxassetid://" .. id
 		local beforeCalls = calls

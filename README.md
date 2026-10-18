@@ -51,7 +51,7 @@ No camera solution is applied when a target is unreachable at the current charge
 An identified melee attack or lunge-hold animation triggers the equipped dagger's
 existing `ParryClient` when its killer is within 15 studs. Native readiness checks
 still apply, including cooldown, silence, health and other actions. Each observed
-attack gets at most one attempt. The inspected Veil melee and Jeff attack/lunge animation IDs and the
+attack gets at most one attempt. The inspected Veil melee and Jeff attack/lunge/Frenzy animation IDs and the
 shared `attack`/`lungehold` track names are recognized, including generic replicated
 `Animation` tracks with those IDs; custom attacks with other
 names/IDs are not guessed. Detection depends on animation replication reaching you.
@@ -217,3 +217,12 @@ start/destroy cycles, feature toggles, and worker/listener cleanup. The fake-cam
 lifecycle test also exercises 40 charges/releases and 20 respawns. These checks
 cover resource lifetimes and repeated work; they do not establish FPS or memory
 usage on every device during a long game session.
+
+A later October 18 live capture observed `82666958311998` while Jeff's `Frenzy`
+attribute was true. Roblox asset metadata identifies it as `AttackFrenzy-m`;
+that generic replicated `Animation` track is now recognized too. During the same
+round, an automatic regular Jeff parry at 12.12 studs returned `true, 90`, and the
+killer played its parried animation. The native call followed the cue by about
+0.10 ms; the result arrived about 867 ms later. This confirms one successful
+regular automatic parry; it does not prove success against the Frenzy move.
+The compact capture is `scripts/fixtures/jeff_frenzy_2026_10_18.json`.

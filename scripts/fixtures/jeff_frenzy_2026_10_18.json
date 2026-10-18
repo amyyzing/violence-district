@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-18",
+  "logicVersion": 94,
+  "specialAttack": {
+    "animationId": "82666958311998",
+    "assetName": "AttackFrenzy-m",
+    "replicatedTrackName": "Animation",
+    "observedFrenzy": true,
+    "observedLengthSeconds": 0.36666667461395264,
+    "nearestInitialObservationStuds": 86.64254760742188
+  },
+  "successfulAutomaticRegularParry": {
+    "cueAnimationId": "129784271201071",
+    "attackAnimationId": "132817836308238",
+    "frenzy": false,
+    "distanceStuds": 12.122621536254883,
+    "cueToNativeCallMs": 0.10320000001229346,
+    "replyMs": 866.5917000034824,
+    "success": true,
+    "cooldown": 90,
+    "killerParriedAnimationId": "85030641905220"
+  },
+  "limits": [
+    "Special Frenzy cues were identified outside the 15-stud activation range in this initial capture.",
+    "The successful automatic parry was a regular Jeff swing, not the Frenzy attack.",
+    "Other players outgoing client requests are not visible from this client."
+  ]
+}

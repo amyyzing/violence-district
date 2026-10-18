@@ -15,6 +15,7 @@ return function(context)
 	local attackIds = {
 		["78935059863801"] = true, ["122812055447896"] = true, -- Veil
 		["129784271201071"] = true, ["132817836308238"] = true, -- Jeff lunge/attack
+		["82666958311998"] = true, -- Jeff AttackFrenzy-m, observed during Frenzy
 	}
 	local function report(text)
 		if status == text then return end
