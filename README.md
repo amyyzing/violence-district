@@ -226,3 +226,10 @@ killer played its parried animation. The native call followed the cue by about
 0.10 ms; the result arrived about 867 ms later. This confirms one successful
 regular automatic parry; it does not prove success against the Frenzy move.
 The compact capture is `scripts/fixtures/jeff_frenzy_2026_10_18.json`.
+
+That round capture ended at Intermission after about 417 seconds. It recorded
+nine Frenzy swings, all outside 15 studs (nearest 36.09), and two automatic
+regular attempts: one successful and one unsuccessful. In the unsuccessful
+attempt, Jeff faced away and moved from 6.36 studs at the cue to 18.64 studs
+when the swing started. The trigger still uses an attack cue within 15 studs;
+there is no closing-distance requirement.

@@ -21,8 +21,29 @@
     "killerParriedAnimationId": "85030641905220"
   },
   "limits": [
-    "Special Frenzy cues were identified outside the 15-stud activation range in this initial capture.",
+    "All nine observed Frenzy swings were outside the 15-stud activation range; the nearest was 36.09 studs.",
     "The successful automatic parry was a regular Jeff swing, not the Frenzy attack.",
     "Other players outgoing client requests are not visible from this client."
-  ]
+  ],
+  "roundSummary": {
+    "durationSeconds": 417.413973499999,
+    "stoppedAt": "Intermission",
+    "killerAnimationEvents": 200,
+    "frenzySwingsObserved": 9,
+    "nearestFrenzySwingStuds": 36.09257125854492,
+    "frenzySwingsWithin15Studs": 0,
+    "automaticAttempts": 2,
+    "successfulAutomaticParries": 1,
+    "unsuccessfulAutomaticParries": 1
+  },
+  "unsuccessfulAutomaticRegularParry": {
+    "cueAnimationId": "129784271201071",
+    "cueDistanceStuds": 6.356520175933838,
+    "killerFacingDotAtCue": -0.999823272228241,
+    "attackAnimationAfterCueMs": 575.6423000014,
+    "attackDistanceStuds": 18.635940551757812,
+    "replyMs": 908.951999997953,
+    "success": false,
+    "cooldown": 60
+  }
 }
