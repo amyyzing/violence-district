@@ -16,7 +16,7 @@ refresh as your role, character or equipped item changes.
 | Auto parry | K |
 
 Choose **Normal** or **Perfect** beside the healing counter; the selection slides
-between modes. Drag the blank top edge to move the panel. **Right Control**
+between modes. Drag the exposed menu background to move the panel. **Right Control**
 maximizes or minimizes the same panel into its icon cube in 0.4 seconds.
 The panel automatically fits smaller viewports.
 

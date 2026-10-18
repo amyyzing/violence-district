@@ -119,12 +119,11 @@ local function updateAimFov()
 end
 connect(game:GetService("RunService").RenderStepped, updateAimFov)
 panel = make("Frame", "Panel", sg, {
-	Size = UDim2.fromOffset(348, PANEL_HEIGHT), BackgroundColor3 = C.panel,
+	Size = UDim2.fromOffset(348, PANEL_HEIGHT), BackgroundColor3 = Color3.fromRGB(8, 9, 13), BackgroundTransparency = 0.65,
 	Position = previousGuiState and previousGuiState.position or UDim2.fromOffset(48, 80),
 	Visible = not previousGuiState or previousGuiState.enabled ~= false,
 })
 corner(panel, 14)
-make("UIStroke", "Outline", panel, { Color = C.line, Thickness = 1 })
 local scale = make("UIScale", "Scale", panel, { Scale = 1 })
 local reopen = make("Frame", "Reopen", panel, {})
 reopen.BackgroundTransparency = 1
@@ -158,9 +157,9 @@ for index, span in ipairs({
 	})
 end
 
--- A blank top edge keeps dragging and native modal mouse handling without a title.
-local header = button(panel, "DragHandle", "", 0, 0, 348, 14, C.panel)
-header.BackgroundTransparency = 1
+-- The background handles dragging; feature and mode buttons remain above it.
+local header = button(panel, "DragHandle", "", 0, 0, 348, PANEL_HEIGHT, C.panel)
+header.BackgroundTransparency, header.ZIndex = 1, 0
 
 local group = make("Frame", "Features", panel, {
 	Position = UDim2.fromOffset(20, 16), Size = UDim2.fromOffset(308, 230), BackgroundColor3 = C.surface,

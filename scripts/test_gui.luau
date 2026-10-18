@@ -49,6 +49,10 @@ return function()
 		expect(content.DragHandle.Modal, "Visible panel did not release the pointer")
 		expect(not content:FindFirstChild("Title") and not content:FindFirstChild("Close") and not content:FindFirstChild("ParryTiming"), "Removed UI remained")
 		expect(panel.Reopen:IsA("Frame"), "Minimized cube remained clickable")
+		expect(not panel:FindFirstChild("Outline"), "Outer stroke remained")
+		expect(panel.BackgroundTransparency > 0 and panel.BackgroundTransparency < 1, "Panel was not semi-transparent")
+		expect(content.DragHandle.AbsoluteSize == content.AbsoluteSize and content.DragHandle.ZIndex < content.Features.ZIndex,
+			"Drag background did not cover the panel behind controls")
 		expect(content.HealingCounter.Current.TextSize > content.HealingCounter.Total.TextSize, "Healing numerator was not larger")
 		local total = content.HealingCounter.Total
 		local totalCenter = total.AbsolutePosition.Y + total.AbsoluteSize.Y - total.TextBounds.Y / 2
