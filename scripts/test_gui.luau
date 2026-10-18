@@ -92,18 +92,13 @@ return function()
 			local row = content.Features[item[1] .. "Row"]
 			local initial = logic.getState()[item[2]]
 			activate(row)
+			expect(logic.getState()[item[2]] ~= initial, item[1] .. " did not toggle with one click")
 			if logic.getFeatureAvailability()[item[2]] == false then
-				expect(not row.Interactable and not row:FindFirstChild("State"), item[1] .. " was not greyed out")
-				expect(logic.getState()[item[2]] == initial, item[1] .. " toggled while unavailable")
-				if not initial then
-					item[3](true)
-					expect(logic.getState()[item[2]] == false, item[1] .. " API enabled an unavailable feature")
-				end
-			else
-				expect(logic.getState()[item[2]] ~= initial, item[1] .. " did not toggle with one click")
-				activate(row)
-				expect(logic.getState()[item[2]] == initial, item[1] .. " did not toggle back")
+				expect(row.Interactable and row.Label.TextColor3 == Color3.fromRGB(83, 89, 105), item[1] .. " was not greyed out but toggleable")
+				expect(not row:FindFirstChild("State"), "Feature status text returned")
 			end
+			activate(row)
+			expect(logic.getState()[item[2]] == initial, item[1] .. " did not toggle back")
 		end
 		local selection = content.Mode.Selection
 		activate(content.Mode.Perfect)

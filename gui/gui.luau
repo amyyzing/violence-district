@@ -2,7 +2,7 @@ local LOGIC_KEY = "ViolenceDistrictLogic"
 local GUI_KEY = "ViolenceDistrictGui"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local LOGIC_VERSION = 92
+local LOGIC_VERSION = 93
 local PANEL_HEIGHT = 318
 local TRANSITION_TIME = 0.4
 
@@ -198,7 +198,7 @@ for index, channel in ipairs(channels) do
 	corner(mark, 3)
 	channel.mark = mark
 	connect(row.Activated, function()
-		if Logic.getFeatureAvailability()[channel.key] ~= false then channel.set(not Logic.getState()[channel.key]) end
+		channel.set(not Logic.getState()[channel.key])
 	end)
 	if index < #channels then
 		make("Frame", "Divider" .. index, group, {
@@ -286,13 +286,13 @@ local function render(state)
 	syncAimFov()
 	for _, channel in ipairs(channels) do
 		local available = availability[channel.key] ~= false
-		local on = available and state[channel.key] == true
-		channel.row.Interactable = available
+		local on = state[channel.key] == true
+		channel.row.Interactable = true
 		channel.label.TextColor3 = available and C.text or C.disabled
 		channel.hotkeyLabel.TextColor3 = available and C.muted or C.disabled
-		if channel.on ~= on then
-			channel.on = on
-			tween(channel.mark, { Rotation = on and 45 or 0, BackgroundColor3 = on and C.accent or C.line })
+		if channel.on ~= on or channel.available ~= available then
+			channel.on, channel.available = on, available
+			tween(channel.mark, { Rotation = on and 45 or 0, BackgroundColor3 = on and (available and C.accent or C.disabled) or C.line })
 		end
 	end
 	if selectedMode ~= state.skillCheckMode then

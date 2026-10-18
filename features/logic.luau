@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 92
+local VERSION = 93
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -1538,7 +1538,6 @@ function Logic.toggleHighlights()
 end
 
 function Logic.setProjectileVisualiserEnabled(on)
-	if on and not Logic.getFeatureAvailability().projectileVisualiserEnabled then return end
 	Logic._installFeatureModules()
 	featureModules.ProjectileVisualiser.setEnabled(on)
 end
@@ -1548,7 +1547,6 @@ function Logic.toggleProjectileVisualiser()
 end
 
 function Logic.setSpearAimEnabled(on)
-	if on and not Logic.getFeatureAvailability().spearAimEnabled then return end
 	Logic._installFeatureModules()
 	featureModules.SpearAim.setEnabled(on)
 end
@@ -1563,7 +1561,6 @@ function Logic.setSkillCheckEnabled(on)
 end
 
 function Logic.setAutoParryEnabled(on)
-	if on and not Logic.getFeatureAvailability().autoParryEnabled then return end
 	Logic._installFeatureModules()
 	featureModules.AutoParry.setEnabled(on)
 end

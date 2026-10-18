@@ -42,6 +42,20 @@ return function(source, skillFactory, parryFactory)
 			logic.setHighlightsEnabled(true) logic.setHighlightsEnabled(false)
 			logic.setSkillCheckEnabled(true) logic.setSkillCheckEnabled(false)
 			logic.setAutoParryEnabled(true) logic.setAutoParryEnabled(false)
+			player.Team.Name, dagger.Parent = "Spectator", nil
+			logic.setProjectileVisualiserEnabled(true)
+			logic.setSpearAimEnabled(true)
+			logic.setAutoParryEnabled(true)
+			local saved = logic.getState()
+			expect(saved.projectileVisualiserEnabled and saved.spearAimEnabled and saved.autoParryEnabled,
+				"Unavailable feature could not retain its enabled preference")
+			expect(not logic.getFeatureAvailability().autoParryEnabled and not logic.getFeatureAvailability().spearAimEnabled,
+				"Enabled preference bypassed role/item requirements")
+			expect(not logic.getParryDiagnostics().monitoring, "Unavailable auto parry installed a frame monitor")
+			logic.setProjectileVisualiserEnabled(false)
+			logic.setSpearAimEnabled(false)
+			logic.setAutoParryEnabled(false)
+			player.Team.Name, dagger.Parent = "Survivors", character
 			expect(count(run.Heartbeat) == 1, "Disabled features retained a frame monitor")
 			local resync
 			for _, value in pairs(upvalues(logic.start)) do if type(value) == "thread" then resync = value end end

@@ -4,8 +4,9 @@ A compact interface for Violence District. Click a feature row once to toggle it
 The small indicator rotates and lights up when enabled.
 Projectile preview and Spear aim are greyed out unless you are Veil on the Killer
 team. Auto parry is greyed out unless you are a survivor with an equipped dagger.
-Unavailable rows cannot be activated, including through their hotkeys. The rows
-refresh as your role, character or equipped item changes.
+Rows remain toggleable while greyed out, including through their hotkeys. An
+enabled switch remembers your preference and becomes active when its requirements
+are met. The rows refresh as your role, character or equipped item changes.
 
 | Feature | Hotkey |
 | --- | --- |
