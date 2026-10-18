@@ -50,6 +50,12 @@ return function()
 		expect(not content:FindFirstChild("Title") and not content:FindFirstChild("Close") and not content:FindFirstChild("ParryTiming"), "Removed UI remained")
 		expect(panel.Reopen:IsA("Frame"), "Minimized cube remained clickable")
 		expect(not panel:FindFirstChild("Outline"), "Outer stroke remained")
+		expect(content.Features.BackgroundTransparency == 1, "Feature group background remained")
+		for _, item in ipairs(fields) do
+			expect(content.Features[item[1] .. "Row"].BackgroundTransparency == 1, "Feature row background remained")
+		end
+		expect(content.Mode.BackgroundTransparency == 1 and content.Mode:FindFirstChild("Outline") ~= nil,
+			"Mode container was not transparent with a border")
 		expect(panel.BackgroundTransparency > 0 and panel.BackgroundTransparency < 1, "Panel was not semi-transparent")
 		expect(content.DragHandle.AbsoluteSize == content.AbsoluteSize and content.DragHandle.ZIndex < content.Features.ZIndex,
 			"Drag background did not cover the panel behind controls")

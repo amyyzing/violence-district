@@ -162,7 +162,7 @@ local header = button(panel, "DragHandle", "", 0, 0, 348, PANEL_HEIGHT, C.panel)
 header.BackgroundTransparency, header.ZIndex = 1, 0
 
 local group = make("Frame", "Features", panel, {
-	Position = UDim2.fromOffset(20, 16), Size = UDim2.fromOffset(308, 230), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(20, 16), Size = UDim2.fromOffset(308, 230), BackgroundTransparency = 1,
 })
 corner(group, 10)
 local availability = Logic.getFeatureAvailability()
@@ -175,6 +175,7 @@ local channels = {
 }
 for index, channel in ipairs(channels) do
 	local row = button(group, channel.id .. "Row", "", 0, (index - 1) * 46, 308, 46)
+	row.BackgroundTransparency = 1
 	corner(row, 10)
 	channel.label = label(row, "Label", channel.title, 14, 0, 174, 46, 13, C.text, Enum.Font.GothamMedium)
 	local key = label(row, "Hotkey", channel.hotkey, 230, 0, 20, 46, 11, C.muted)
@@ -189,10 +190,6 @@ for index, channel in ipairs(channels) do
 	connect(row.Activated, function()
 		if Logic.getFeatureAvailability()[channel.key] ~= false then channel.set(not Logic.getState()[channel.key]) end
 	end)
-	connect(row.MouseEnter, function()
-		if availability[channel.key] ~= false then tween(row, { BackgroundColor3 = C.hover }) end
-	end)
-	connect(row.MouseLeave, function() tween(row, { BackgroundColor3 = C.surface }) end)
 	if index < #channels then
 		make("Frame", "Divider" .. index, group, {
 			Position = UDim2.fromOffset(14, index * 46 - 1), Size = UDim2.fromOffset(280, 1), BackgroundColor3 = C.line,
@@ -256,9 +253,10 @@ end)
 bindHealingCharacter(LP.Character)
 
 local modeGroup = make("Frame", "Mode", panel, {
-	Position = UDim2.fromOffset(152, 266), Size = UDim2.fromOffset(176, 34), BackgroundColor3 = C.surface,
+	Position = UDim2.fromOffset(152, 266), Size = UDim2.fromOffset(176, 34), BackgroundTransparency = 1,
 })
 corner(modeGroup, 9)
+make("UIStroke", "Outline", modeGroup, { Color = C.muted, Thickness = 1, Transparency = 0.35 })
 local modeSelection = make("Frame", "Selection", modeGroup, {
 	Position = UDim2.fromOffset(3, 3), Size = UDim2.fromOffset(85, 28), BackgroundColor3 = C.accent,
 })
@@ -282,7 +280,6 @@ local function render(state)
 		channel.row.Interactable = available
 		channel.label.TextColor3 = available and C.text or C.disabled
 		channel.hotkeyLabel.TextColor3 = available and C.muted or C.disabled
-		if not available then tween(channel.row, { BackgroundColor3 = C.surface }) end
 		tween(channel.mark, { Rotation = on and 45 or 0, BackgroundColor3 = on and C.accent or C.line })
 	end
 	if selectedMode ~= state.skillCheckMode then
