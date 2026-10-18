@@ -1,5 +1,6 @@
 -- Isolated signals and native-client double: never sends remotes or presses input.
 return function(factory)
+	local getupvalues = getupvalues or (debug and debug.getupvalues)
 	local signals, checks, calls, clock, enabled = {}, 0, 0, 10, false
 	local function signal()
 		local handlers = {}

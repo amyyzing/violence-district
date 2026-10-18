@@ -1,6 +1,7 @@
 -- Observe replicated melee wind-ups, then use the already-running dagger client.
 return function(context)
 	local feature = {}
+	local getupvalues = getupvalues or (debug and debug.getupvalues)
 	local players, player = context.players, context.player
 	local connections, watchers, cues, history, itemConnections = {}, {}, {}, {}, {}
 	local pending, nativeClient, stepConnection
