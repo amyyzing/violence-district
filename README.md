@@ -68,7 +68,10 @@ Parry diagnostics expose **Call** (observed attack cue to native parry call) and
 network travel, server handling and the parry resolution window; it is not a server
 processing time or a one-way latency measurement. No server timestamp is exposed
 by this result signal. The last 12 samples are available through
-`getgenv().ViolenceDistrictLogic.getParryDiagnostics()`.
+`getgenv().ViolenceDistrictLogic.getParryDiagnostics()`. Its `lastBlocked` entry
+retains the latest rejected in-range cue, with its reason, animation, distance,
+and observation time, even after earlier successful attempts. Only one blocked
+entry is retained; it does not add polling or bypass native readiness.
 
 The GUI uses maximum display order in CoreGui when supported by the executor,
 with a fallback to its hidden UI container or PlayerGui.
@@ -245,3 +248,10 @@ samples reset the history. Brief gaps between replication packets do not reset
 the history or flip its last movement direction. The ballistic solver and arc physics are unchanged.
 Tests cover these traces at 30, 60, and 144 FPS; this is a conservative prediction
 of erratic movement, not knowledge of the target's next direction change.
+
+A subsequent Veil melee capture activated the native dagger at 12.87 studs and
+60 health, returning `true, 90` about 848 ms later. The earlier reported miss was
+not recorded, so this later success does not explain it. The capture is saved in
+`scripts/fixtures/veil_parry_2026_10_18.json`. Blocked-cue diagnostics now update
+even after an earlier success and report cooldown/resolving/silenced states
+without repeatedly invoking native readiness checks.

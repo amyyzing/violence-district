@@ -4,7 +4,7 @@ return function(context)
 	local getupvalues = getupvalues or (debug and debug.getupvalues)
 	local players, player = context.players, context.player
 	local connections, watchers, cues, history, itemConnections = {}, {}, {}, {}, {}
-	local pending, nativeClient, stepConnection
+	local pending, nativeClient, stepConnection, lastBlocked
 	local lastClientSearch = -math.huge
 	local now = context.clock or os.clock
 	local spawn = context.spawn or function(callback) task.spawn(callback) end
@@ -111,14 +111,21 @@ return function(context)
 		if delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z > 225 then return false end
 		if enemy:GetAttribute("IsStunned") then return false end
 		-- Consume this cue even if native validation rejects it: never retry every frame.
+		local cue = cues[killer]
 		cues[killer] = nil
-		if not equipped(client) then report("No equipped dagger") return false end
-		if client.isParryOnCooldown or client.isParryResolving or client.isSilenced then return false end
-		local ok, ready = pcall(client.CanUse, client)
-		if not ok or not ready then
-			if #history == 0 then report("Dagger not ready") end
+		local function blocked(reason)
+			local animation = cue and cue.track.Animation
+			lastBlocked = { at = now(), reason = reason, killer = killer.Name, distance = delta.Magnitude,
+				animationId = animation and animation.AnimationId }
+			report(reason)
 			return false
 		end
+		if not equipped(client) then return blocked("No equipped dagger") end
+		if client.isParryOnCooldown then return blocked("Dagger cooldown") end
+		if client.isParryResolving then return blocked("Dagger resolving") end
+		if client.isSilenced then return blocked("Dagger silenced") end
+		local ok, ready = pcall(client.CanUse, client)
+		if not ok or not ready then return blocked("Dagger not ready") end
 		return true
 	end
 	function feature._step()
@@ -287,7 +294,7 @@ return function(context)
 	end
 	function feature.toggle() feature.setEnabled(not context.getEnabled()) end
 	function feature.getDiagnostics()
-		return { status = status, pending = pending, history = history,
+		return { status = status, pending = pending, history = history, lastBlocked = lastBlocked,
 			clientBound = equipped(nativeClient) == true, monitoring = stepConnection ~= nil }
 	end
 	function feature.destroy() stop() nativeClient = nil end

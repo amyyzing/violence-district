@@ -130,6 +130,10 @@ return function(factory)
 	local beforeChecks, beforeSearches = readinessChecks, clientSearches
 	feature._observe(killer, track("lungehold"))
 	expect(calls == 1, "Blocked native dagger was activated")
+	local blockedCue = feature.getDiagnostics().lastBlocked
+	expect(blockedCue and blockedCue.reason == "Dagger not ready" and blockedCue.animationId == "rbxassetid://1",
+		"Native rejection after an earlier success was hidden")
+	expect(text == "Dagger not ready", "Blocked cue left an old success status visible")
 	for _ = 1, 1000 do heartbeat:Fire() end
 	expect(readinessChecks == beforeChecks + 1 and clientSearches == beforeSearches,
 		"Nearby rejected cue repeatedly checked native readiness or searched callbacks")
@@ -180,6 +184,16 @@ return function(factory)
 	local beforeCalls = calls
 	feature._observe(killer, idle)
 	expect(calls == beforeCalls, "Generic replicated idle track triggered parry")
+	for _, item in ipairs({ { "isParryOnCooldown", "Dagger cooldown" }, { "isSilenced", "Dagger silenced" } }) do
+		client[item[1]] = true
+		local beforeReadiness, beforeCalls = readinessChecks, calls
+		feature._observe(killer, track())
+		expect(feature.getDiagnostics().lastBlocked.reason == item[2] and text == item[2], "Native blocking reason was lost")
+		for _ = 1, 1000 do heartbeat:Fire() end
+		expect(readinessChecks == beforeReadiness and calls == beforeCalls and heartbeat:count() == 0,
+			"Blocked cue performed repeated readiness or parry work")
+		client[item[1]] = false
+	end
 	deferred = true
 	feature._observe(killer, track())
 	local before = calls

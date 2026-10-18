@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-18",
+  "logicVersion": 96,
+  "automaticMeleeParry": {
+    "killer": "Veil",
+    "cueAnimationId": "122812055447896",
+    "attackAnimationId": "78935059863801",
+    "distanceStuds": 12.871607780456543,
+    "health": 60,
+    "nativeReadyAtCue": true,
+    "cueToNativeCallMs": 0.06900000153109431,
+    "replyMs": 847.8908000033698,
+    "success": true,
+    "cooldown": 90
+  },
+  "limits": [
+    "The earlier reported missed swing was not recorded; this later success does not establish why that swing was missed.",
+    "Initial inspection found native busy=true while the player was hooked; the later recorded cue had busy=false."
+  ]
+}
