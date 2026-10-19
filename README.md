@@ -25,7 +25,13 @@ The panel automatically fits smaller viewports.
 Skill checks react to needle rotation updates and use the game's full great-hit
 window. Perfect mode aims near its center; if a fast frame skips the great
 window, either mode takes a valid normal hit when possible. Frame stalls that
-skip both windows and executor input delays can still cause misses.
+skip both windows can still cause misses.
+Skill checks call the current character's native generator/healing keyboard
+handlers directly, so simulated Space input, mouse capture and Roblox menu
+keyboard routing are not required. The game still evaluates the real needle
+angle and handles its own results. Native callback discovery is cached per
+character and cleared on respawn; unsupported discovery reports a warning
+instead of sending input into the menu.
 
 The healing counter beside the mode buttons follows the character's live
 `HealProgress` attribute on a 0–100 scale, including Ambitious Medic progress.

@@ -7,6 +7,43 @@ return function(factory)
 	local observedCheck
 	local enabled, mode = true, "Perfect"
 	local feature
+	local originalFactoryEnvironment = getfenv(factory)
+	local discoveryScans = 0
+	local inputEvent = Instance.new("BindableEvent")
+	local characterRemoving = Instance.new("BindableEvent")
+	local character = Instance.new("Model")
+	local player = { Character = character, CharacterRemoving = characterRemoving.Event }
+	local nativeConnections, sources = {}, {}
+	local nativeKind, throwInput, advanceGoal = "generator", false, false
+	local unrelatedCalls, oldCharacterCalls = 0, 0
+	local function nativeHandler(owner, name, kind)
+		local source = Instance.new("LocalScript") source.Name, source.Parent = name, owner
+		sources[#sources + 1] = source
+		local function handler(input, processed)
+			if processed or input.KeyCode ~= Enum.KeyCode.Space then return end
+			if throwInput then error("fixture input unavailable") end
+			if owner ~= player.Character then oldCharacterCalls = oldCharacterCalls + 1 return end
+			if kind == "unrelated" then unrelatedCalls = unrelatedCalls + 1 return end
+			if nativeKind ~= kind then return end
+			presses = presses + 1
+			if observedCheck then
+				pressedAngles[#pressedAngles + 1] = observedCheck.Line.Rotation - observedCheck.Goal.Rotation
+				if advanceGoal then observedCheck.Goal.Rotation = observedCheck.Goal.Rotation + 70 end
+			end
+		end
+		setfenv(handler, setmetatable({ script = source }, { __index = getfenv() }))
+		nativeConnections[#nativeConnections + 1] = inputEvent.Event:Connect(handler)
+	end
+	nativeHandler(character, "Skillcheck-gen", "generator")
+	nativeHandler(character, "Skillcheck-player", "healing")
+	nativeHandler(character, "UnrelatedInput", "unrelated")
+	-- Match executors that omit native functions from their connection lists.
+	if type(getgc) == "function" then
+		setfenv(factory, setmetatable({
+			getconnections = function() return {} end,
+			getgc = function(...) discoveryScans = discoveryScans + 1 return getgc(...) end,
+		}, { __index = originalFactoryEnvironment }))
+	end
 	local function prompt(name, visible)
 		local screen = Instance.new("ScreenGui")
 		screen.Name = name
@@ -33,14 +70,9 @@ return function(factory)
 		feature = factory({
 			playerGui = container,
 			runService = { Stepped = step.Event },
-			virtualInputManager = { SendKeyEvent = function(_, down)
-				if down then
-					presses = presses + 1
-					if observedCheck then
-						pressedAngles[#pressedAngles + 1] = observedCheck.Line.Rotation - observedCheck.Goal.Rotation
-					end
-				end
-			end },
+			player = player,
+			input = { InputBegan = inputEvent.Event },
+			virtualInputManager = { SendKeyEvent = function() error("Input requires focus") end },
 			getEnabled = function() return enabled end,
 			setEnabled = function(value) enabled = value end,
 			getMode = function() return mode end,
@@ -119,6 +151,7 @@ return function(factory)
 		assert(presses == 8, "Wrapped a missed full rotation into a false success")
 		hit(recreated)
 		assert(presses == 9, "New continuous-rotation goal did not rearm")
+		local scansBeforeRotations = discoveryScans
 		observedCheck = recreated
 		local function rotationCase(angles, expected, caseMode)
 			recreated.Visible = false
@@ -184,6 +217,44 @@ return function(factory)
 				tween:Destroy()
 			end
 		end
+		assert(discoveryScans == scansBeforeRotations, "Unchanged character repeated native callback discovery")
+		-- Direct callbacks keep working when simulated keyboard input is unavailable.
+		nativeKind = "healing"
+		rotationCase({ 90, 108 }, 108)
+		assert(unrelatedCalls == 0, "Unrelated keyboard handler was invoked")
+		advanceGoal = true
+		recreated.Visible = false task.wait()
+		recreated.Line.Rotation = recreated.Goal.Rotation
+		recreated.Visible = true task.wait()
+		local beforeAdvance = presses
+		hit(recreated)
+		hit(recreated)
+		assert(presses == beforeAdvance + 2, "Synchronous native goal advance did not rearm")
+		advanceGoal = false
+		-- A failed callback is not marked consumed; a deliberate re-enable can retry.
+		recreated.Visible = false task.wait()
+		recreated.Line.Rotation = recreated.Goal.Rotation
+		recreated.Visible = true task.wait()
+		throwInput = true
+		local beforeFailure = presses
+		hit(recreated)
+		assert(presses == beforeFailure, "Failed callback counted as accepted input")
+		throwInput = false
+		feature.setEnabled(false) feature.setEnabled(true)
+		hit(recreated)
+		assert(presses == beforeFailure + 1, "Failed callback permanently consumed the check")
+		-- Respawn invalidates callbacks from the previous character.
+		characterRemoving:Fire(character)
+		local replacementCharacter = Instance.new("Model")
+		player.Character = replacementCharacter
+		nativeHandler(replacementCharacter, "Skillcheck-player", "healing")
+		recreated.Visible = false task.wait()
+		recreated.Line.Rotation = recreated.Goal.Rotation
+		recreated.Visible = true task.wait()
+		local beforeRespawn = presses
+		hit(recreated)
+		assert(presses == beforeRespawn + 1 and oldCharacterCalls == 0, "Respawn used stale native callbacks")
+		replacementCharacter:Destroy()
 		local queued = prompt("SkillCheckPromptGui-con", true)
 		local beforeDestroy = presses
 		feature.destroy()
@@ -192,8 +263,11 @@ return function(factory)
 		assert(presses == beforeDestroy, "Deferred work survived destroy")
 	end)
 	if feature then feature.destroy() end
+	setfenv(factory, originalFactoryEnvironment)
+	for _, connection in ipairs(nativeConnections) do connection:Disconnect() end
+	character:Destroy() inputEvent:Destroy() characterRemoving:Destroy()
 	container:Destroy()
 	step:Destroy()
 	assert(ok, err)
-	return "PASS: lifecycle, absolute rotations, skipped great zones, window boundaries, 36 sampled rotation cases, 12 real tweens, cleanup"
+	return "PASS: focus-independent native generator/healing input, failure recovery, respawn, lifecycle, absolute rotations, skipped great zones, window boundaries, 36 sampled rotation cases, 12 real tweens, cleanup"
 end

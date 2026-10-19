@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 102
+local VERSION = 103
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -1532,8 +1532,9 @@ function Logic._installFeatureModules()
 
 	featureModules.SkillCheck = Logic._loadFeatureModule("SkillCheck", nil, {
 		playerGui = PG,
+		player = LP,
+		input = UserInputService,
 		runService = RunService,
-		virtualInputManager = game:GetService("VirtualInputManager"),
 		getEnabled = function()
 			return skillCheckEnabled
 		end,
