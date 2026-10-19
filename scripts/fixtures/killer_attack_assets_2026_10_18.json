@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-18",
+  "metadataSource": "Roblox MarketplaceService:GetProductInfo; all asset names and creator checked in connected client",
+  "creator": "VIOLENCE DISTRICT",
+  "creatorGroupId": 8818124,
+  "candidateSource": "https://xenoscripts.com/script/fallens-hub-aim-lock-and-aimbot",
+  "limitations": [
+    "Asset metadata confirms names and creator, not current gameplay use or successful parries.",
+    "Cure attribution of the SCP-labelled Lunge sc / Slash sc pair is inferred; no Cure combat capture yet.",
+    "Generic Abysswalker Lunge Hold attribution is provisional; recognized by ID regardless of killer.",
+    "Special attack timing and parry eligibility still require combat checks. Alex startup/run are excluded."
+  ],
+  "assets": [
+    {
+      "killer": "Stalker",
+      "id": "117042998468241",
+      "assetName": "Stalker lunge",
+      "cue": "hold"
+    },
+    {
+      "killer": "Stalker",
+      "id": "133963973694098",
+      "assetName": "Attack Stalker",
+      "cue": "swing"
+    },
+    {
+      "killer": "Killer",
+      "id": "129784271201071",
+      "assetName": "LungeHold-jeff",
+      "cue": "hold"
+    },
+    {
+      "killer": "Killer",
+      "id": "132817836308238",
+      "assetName": "Attack-jeff",
+      "cue": "swing"
+    },
+    {
+      "killer": "Hidden",
+      "id": "113255068724446",
+      "assetName": "Hiddenlungehold",
+      "cue": "hold"
+    },
+    {
+      "killer": "Hidden",
+      "id": "74968262036854",
+      "assetName": "HiddenAttack",
+      "cue": "swing"
+    },
+    {
+      "killer": "Abysswalker",
+      "id": "118907603246885",
+      "assetName": "Lunge Hold",
+      "cue": "hold"
+    },
+    {
+      "killer": "Abysswalker",
+      "id": "78432063483146",
+      "assetName": "Abyss attack",
+      "cue": "swing"
+    },
+    {
+      "killer": "Veil",
+      "id": "122812055447896",
+      "assetName": "veil Lunge",
+      "cue": "hold"
+    },
+    {
+      "killer": "Veil",
+      "id": "78935059863801",
+      "assetName": "veil Swing",
+      "cue": "swing"
+    },
+    {
+      "killer": "Slasher",
+      "id": "110355011987939",
+      "assetName": "LungeHold-Jason",
+      "cue": "hold"
+    },
+    {
+      "killer": "Slasher",
+      "id": "139369275981139",
+      "assetName": "Attack-jason",
+      "cue": "swing"
+    },
+    {
+      "killer": "Masked",
+      "id": "105374834496520",
+      "assetName": "Jacket lunge",
+      "cue": "hold"
+    },
+    {
+      "killer": "Masked",
+      "id": "111920872708571",
+      "assetName": "jacket hit",
+      "cue": "swing"
+    },
+    {
+      "killer": "Cure candidate",
+      "id": "135002183282873",
+      "assetName": "Lunge sc",
+      "cue": "hold"
+    },
+    {
+      "killer": "Cure candidate",
+      "id": "121216847022485",
+      "assetName": "Slash sc",
+      "cue": "swing"
+    },
+    {
+      "killer": "Killer",
+      "id": "82666958311998",
+      "assetName": "AttackFrenzy-m",
+      "cue": "special"
+    },
+    {
+      "killer": "Abysswalker",
+      "id": "80411309607666",
+      "assetName": "Abyss M2 Ability",
+      "cue": "special"
+    },
+    {
+      "killer": "Hidden",
+      "id": "98163597193511",
+      "assetName": "Hiddenm2",
+      "cue": "special"
+    },
+    {
+      "killer": "Masked",
+      "id": "130593238885843",
+      "assetName": "snake attack",
+      "cue": "special"
+    },
+    {
+      "killer": "Masked",
+      "id": "138720291317243",
+      "assetName": "tony attack",
+      "cue": "special"
+    },
+    {
+      "killer": "Masked",
+      "id": "117070354890871",
+      "assetName": "alex rev 2",
+      "cue": "excluded"
+    },
+    {
+      "killer": "Masked",
+      "id": "106871536134254",
+      "assetName": "alex run",
+      "cue": "excluded"
+    }
+  ]
+}

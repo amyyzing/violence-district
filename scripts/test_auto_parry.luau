@@ -240,6 +240,55 @@ return function(factory)
 	enemyRoot.Position = Vector3.new(14, 0, 0)
 	heartbeat:Fire()
 	expect(calls == beforeExpired and heartbeat:count() == 0, "Completed swing was incorrectly kept as a persistent hold")
+	-- Generic replicated tracks must work without meaningful track names.
+	for _, row in ipairs({
+		{ "Stalker", "117042998468241", "133963973694098" },
+		{ "Killer", "129784271201071", "132817836308238" },
+		{ "Hidden", "113255068724446", "74968262036854" },
+		{ "Abysswalker", "118907603246885", "78432063483146" },
+		{ "Veil", "122812055447896", "78935059863801" },
+		{ "Slasher", "110355011987939", "139369275981139" },
+		{ "Masked", "105374834496520", "111920872708571" },
+		{ "Cure candidate", "135002183282873", "121216847022485" },
+	}) do
+		local held = track("Animation")
+		held.Animation.AnimationId = "http://www.roblox.com/asset/?id=" .. row[2]
+		held.TimePosition = 4
+		enemyRoot.Position = Vector3.new(16, 0, 0)
+		local before = calls
+		feature._observe(killer, held, true)
+		clock = clock + 3 heartbeat:Fire()
+		expect(calls == before and heartbeat:count() == 1, row[1] .. " hold expired or activated outside range")
+		enemyRoot.Position = Vector3.new(15, 0, 0) heartbeat:Fire()
+		expect(calls == before + 1, row[1] .. " generic held cue was missed")
+		result(false)
+		local swing = track("Animation")
+		swing.Animation.AnimationId = "rbxassetid://" .. row[3]
+		feature._observe(killer, swing)
+		expect(calls == before + 2, row[1] .. " generic swing was missed")
+		result(false)
+		enemyRoot.Position = Vector3.new(16, 0, 0)
+		feature._observe(killer, swing)
+		clock = clock + 1
+		enemyRoot.Position = Vector3.new(15, 0, 0) heartbeat:Fire()
+		expect(calls == before + 2 and heartbeat:count() == 0, row[1] .. " finished swing became a persistent hold")
+	end
+	for _, id in ipairs({ "80411309607666", "98163597193511", "130593238885843", "138720291317243" }) do
+		local special = track("Animation")
+		special.Animation.AnimationId = "rbxassetid://" .. id
+		local before = calls
+		feature._observe(killer, special)
+		expect(calls == before + 1, "Special attack was missed: " .. id)
+		result(false)
+	end
+	for _, id in ipairs({ "92098503722633", "111229698330816", "135181748009911", "117070354890871", "106871536134254" }) do
+		local other = track("Animation")
+		other.Animation.AnimationId = "rbxassetid://" .. id
+		local before = calls
+		feature._observe(killer, other)
+		expect(calls == before and heartbeat:count() == 0, "Movement, startup or non-melee animation triggered parry: " .. id)
+	end
+	enemyRoot.Position = Vector3.new(14, 0, 0)
 	local beforeUnknown = calls
 	for i = 1, 20 do feature._observe(killer, track("Unknown" .. i)) end
 	local evidence = feature.getDiagnostics().observations

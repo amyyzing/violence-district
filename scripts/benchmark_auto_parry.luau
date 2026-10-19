@@ -21,7 +21,7 @@ local function measure(factory, nearby, holding)
 	end
 	local heartbeat, enabled = signal(), false
 	local lookups, searches, readiness = 0, 0, 0
-	local humanoid = { Health = 100, FindFirstChildOfClass = function() end }
+	local humanoid = { Health = 100, HealthChanged = signal(), IsA = function(_, class) return class == "Humanoid" end, FindFirstChildOfClass = function() end }
 	local root = { Position = position(0) }
 	local character = {
 		DescendantAdded = signal(), DescendantRemoving = signal(),

@@ -13,12 +13,33 @@ return function(context)
 	local generation = 0
 	local status = "Off"
 	-- Replicated tracks may be named only "Animation". Match inspected attack assets too.
-	local holdIds = { ["122812055447896"] = true, ["129784271201071"] = true }
-	local attackIds = {
-		["78935059863801"] = true, ["122812055447896"] = true, -- Veil
-		["129784271201071"] = true, ["132817836308238"] = true, -- Jeff lunge/attack
-		["82666958311998"] = true, -- Jeff AttackFrenzy-m, observed during Frenzy
+	-- Asset names checked with Roblox metadata; see scripts/fixtures/killer_attack_assets_2026_10_18.json.
+	local holdIds = {
+		["117042998468241"] = true, -- Stalker: Stalker lunge
+		["129784271201071"] = true, -- Killer/Jeff: LungeHold-jeff
+		["113255068724446"] = true, -- Hidden: Hiddenlungehold
+		["118907603246885"] = true, -- Abysswalker: Lunge Hold
+		["122812055447896"] = true, -- Veil: veil Lunge
+		["110355011987939"] = true, -- Slasher/Jason: LungeHold-Jason
+		["105374834496520"] = true, -- Masked/Jacket: Jacket lunge
+		["135002183282873"] = true, -- Cure candidate: Lunge sc (SCP-labelled pair)
 	}
+	local attackIds = {
+		["133963973694098"] = true, -- Stalker: Attack Stalker
+		["132817836308238"] = true, -- Killer/Jeff: Attack-jeff
+		["74968262036854"] = true, -- Hidden: HiddenAttack
+		["78432063483146"] = true, -- Abysswalker: Abyss attack
+		["78935059863801"] = true, -- Veil: veil Swing
+		["139369275981139"] = true, -- Slasher/Jason: Attack-jason
+		["111920872708571"] = true, -- Masked/Jacket: jacket hit
+		["121216847022485"] = true, -- Cure candidate: Slash sc
+		["82666958311998"] = true, -- Jeff: AttackFrenzy-m, observed during Frenzy
+		["80411309607666"] = true, -- Abyss M2 Ability
+		["98163597193511"] = true, -- Hiddenm2
+		["130593238885843"] = true, -- Masked: snake attack
+		["138720291317243"] = true, -- Masked: tony attack
+	}
+
 	local function report(text)
 		if status == text then return end
 		status = text
@@ -89,7 +110,7 @@ return function(context)
 	function feature._observe(killer, track, existing)
 		local name = track.Name:lower()
 		local id = track.Animation and track.Animation.AnimationId:match("%d+")
-		local recognized = name == "attack" or name == "lungehold" or attackIds[id] == true
+		local recognized = name == "attack" or name == "attackfr" or name == "lungehold" or holdIds[id] == true or attackIds[id] == true
 		local character = killer.Character
 		local enemyRoot = character and character:FindFirstChild("HumanoidRootPart")
 		local localRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")

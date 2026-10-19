@@ -258,3 +258,14 @@ not recorded, so this later success does not explain it. The capture is saved in
 `scripts/fixtures/veil_parry_2026_10_18.json`. Blocked-cue diagnostics now update
 even after an earlier success and report cooldown/resolving/silenced states
 without repeatedly invoking native readiness checks.
+
+Attack-ID coverage now includes the Stalker, Killer/Jeff, Hidden, Abysswalker,
+Veil, Slasher/Jason, Masked/Jacket, and a provisional SCP-labelled Cure pair.
+The bounded hold lifetime follows the playing animation; ordinary swings still
+expire after 0.8 seconds. Added special cues include Abyss M2, Hidden M2, and
+Masked's snake/Tony attacks alongside Jeff Frenzy. Alex rev-up/run are excluded.
+Roblox asset names and creator were checked on October 18; the asset record and
+attribution limits are in `scripts/fixtures/killer_attack_assets_2026_10_18.json`.
+These are detection candidates, not successful-parry evidence for every killer.
+The range stays 15 studs with no closing-distance condition. Nearby observations
+and `lastDamage` retain bounded evidence through respawns for missed-hit reports.
