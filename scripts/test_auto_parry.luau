@@ -35,7 +35,7 @@ return function(factory)
 		return model, root, humanoid
 	end
 	local localCharacter, localRoot, localHumanoid = character(0)
-	local enemy, enemyRoot, enemyHumanoid = character(10.01)
+	local enemy, enemyRoot, enemyHumanoid = character(13.01)
 	local player = { Name = "Local", Character = localCharacter, Team = { Name = "Survivors" }, CharacterAdded = signal() }
 	local killer = { Name = "Killer", Character = enemy, Team = { Name = "Killer" }, CharacterAdded = signal() }
 	local teamChanged = signal()
@@ -107,13 +107,13 @@ return function(factory)
 	feature._observe(killer, track("RunAnim"))
 	expect(calls == 0, "Non-attack animation triggered parry")
 	feature._observe(killer, track())
-	expect(calls == 0, "Killer outside 10 studs triggered parry")
+	expect(calls == 0, "Killer outside 13 studs triggered parry")
 	expect(clientSearches == setupSearches and readinessChecks == 0, "Distant attack performed expensive native checks")
 	expect(heartbeat:count() == 1, "Attack cue did not install range monitoring")
-	enemyRoot.Position = Vector3.new(10, 0, 0)
+	enemyRoot.Position = Vector3.new(13, 0, 0)
 	clock = clock + 0.02
 	heartbeat:Fire()
-	expect(calls == 1 and client.isParryResolving, "Entering 10 studs during wind-up did not activate native client")
+	expect(calls == 1 and client.isParryResolving, "Entering 13 studs during wind-up did not activate native client")
 	expect(heartbeat:count() == 0, "Pending result retained a frame loop")
 	expect(math.abs(feature.getDiagnostics().pending.localMs - 20) < 0.00001, "Cue-to-call timing is incorrect")
 	heartbeat:Fire()
@@ -195,18 +195,18 @@ return function(factory)
 		client[item[1]] = false
 	end
 	local beforeLongHold = calls
-	enemyRoot.Position = Vector3.new(11, 0, 0)
+	enemyRoot.Position = Vector3.new(14, 0, 0)
 	local held = track("lungehold")
 	feature._observe(killer, held)
 	clock = clock + 3
 	heartbeat:Fire()
-	expect(calls == beforeLongHold and heartbeat:count() == 1, "Long hold was lost or activated outside 10 studs")
-	enemyRoot.Position = Vector3.new(10, 0, 0)
+	expect(calls == beforeLongHold and heartbeat:count() == 1, "Long hold was lost or activated outside 13 studs")
+	enemyRoot.Position = Vector3.new(13, 0, 0)
 	heartbeat:Fire()
-	expect(calls == beforeLongHold + 1, "Entering 10 studs after a long hold did not parry")
+	expect(calls == beforeLongHold + 1, "Entering 13 studs after a long hold did not parry")
 	result(false)
-	enemyRoot.Position = Vector3.new(11, 0, 0) heartbeat:Fire()
-	enemyRoot.Position = Vector3.new(9, 0, 0) heartbeat:Fire()
+	enemyRoot.Position = Vector3.new(14, 0, 0) heartbeat:Fire()
+	enemyRoot.Position = Vector3.new(12, 0, 0) heartbeat:Fire()
 	expect(calls == beforeLongHold + 1 and heartbeat:count() == 0, "Same held signal repeated the attempt")
 	for _, id in ipairs({ "122812055447896", "129784271201071" }) do
 		local existingHold = track("Animation")
@@ -218,13 +218,13 @@ return function(factory)
 		result(false)
 	end
 	local function cancelledHold(change, message)
-		enemyRoot.Position = Vector3.new(11, 0, 0)
+		enemyRoot.Position = Vector3.new(14, 0, 0)
 		local hold = track("lungehold")
 		local before = calls
 		feature._observe(killer, hold)
 		clock = clock + 2
 		change(hold)
-		enemyRoot.Position = Vector3.new(9, 0, 0)
+		enemyRoot.Position = Vector3.new(12, 0, 0)
 		heartbeat:Fire()
 		expect(calls == before and heartbeat:count() == 0, message)
 	end
@@ -233,11 +233,11 @@ return function(factory)
 	enemyHumanoid.Health = 100
 	cancelledHold(function() killer.Team.Name = "Survivors" end, "Role change retained a held attack monitor")
 	killer.Team.Name = "Killer"
-	enemyRoot.Position = Vector3.new(11, 0, 0)
+	enemyRoot.Position = Vector3.new(14, 0, 0)
 	local beforeExpired = calls
 	feature._observe(killer, track("attack"))
 	clock = clock + 1
-	enemyRoot.Position = Vector3.new(9, 0, 0)
+	enemyRoot.Position = Vector3.new(12, 0, 0)
 	heartbeat:Fire()
 	expect(calls == beforeExpired and heartbeat:count() == 0, "Completed swing was incorrectly kept as a persistent hold")
 	-- Generic replicated tracks must work without meaningful track names.
@@ -254,12 +254,12 @@ return function(factory)
 		local held = track("Animation")
 		held.Animation.AnimationId = "http://www.roblox.com/asset/?id=" .. row[2]
 		held.TimePosition = 4
-		enemyRoot.Position = Vector3.new(11, 0, 0)
+		enemyRoot.Position = Vector3.new(14, 0, 0)
 		local before = calls
 		feature._observe(killer, held, true)
 		clock = clock + 3 heartbeat:Fire()
 		expect(calls == before and heartbeat:count() == 1, row[1] .. " hold expired or activated outside range")
-		enemyRoot.Position = Vector3.new(10, 0, 0) heartbeat:Fire()
+		enemyRoot.Position = Vector3.new(13, 0, 0) heartbeat:Fire()
 		expect(calls == before + 1, row[1] .. " generic held cue was missed")
 		result(false)
 		local swing = track("Animation")
@@ -267,10 +267,10 @@ return function(factory)
 		feature._observe(killer, swing)
 		expect(calls == before + 2, row[1] .. " generic swing was missed")
 		result(false)
-		enemyRoot.Position = Vector3.new(11, 0, 0)
+		enemyRoot.Position = Vector3.new(14, 0, 0)
 		feature._observe(killer, swing)
 		clock = clock + 1
-		enemyRoot.Position = Vector3.new(10, 0, 0) heartbeat:Fire()
+		enemyRoot.Position = Vector3.new(13, 0, 0) heartbeat:Fire()
 		expect(calls == before + 2 and heartbeat:count() == 0, row[1] .. " finished swing became a persistent hold")
 	end
 	for _, id in ipairs({ "80411309607666", "98163597193511", "130593238885843", "138720291317243" }) do
@@ -288,16 +288,16 @@ return function(factory)
 		feature._observe(killer, other)
 		expect(calls == before and heartbeat:count() == 0, "Movement, startup or non-melee animation triggered parry: " .. id)
 	end
-	enemyRoot.Position = Vector3.new(9, 0, 0)
+	enemyRoot.Position = Vector3.new(12, 0, 0)
 	local beforeUnknown = calls
 	for i = 1, 20 do feature._observe(killer, track("Unknown" .. i)) end
 	local evidence = feature.getDiagnostics().observations
-	expect(#evidence == 16 and evidence[16].recognized == false and evidence[16].distance == 9,
+	expect(#evidence == 16 and evidence[16].recognized == false and evidence[16].distance == 12,
 		"Unknown nearby animation evidence was absent or unbounded")
 	expect(calls == beforeUnknown and heartbeat:count() == 0, "Unknown animation activated dagger or frame monitoring")
 	localHumanoid.HealthChanged:Fire(60)
 	local damage = feature.getDiagnostics().lastDamage
-	expect(damage and damage.from == 100 and damage.health == 60 and #damage.observations == 16 and damage.distances.Killer == 9,
+	expect(damage and damage.from == 100 and damage.health == 60 and #damage.observations == 16 and damage.distances.Killer == 12,
 		"Damage did not snapshot recent nearby cue evidence")
 	localCharacter.DescendantRemoving:Fire({ Name = "Parrying Dagger" })
 	expect(feature.getDiagnostics().lastDamage == damage, "Unequipping discarded the missed-hit evidence")

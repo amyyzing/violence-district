@@ -49,10 +49,10 @@ No camera solution is applied when a target is unreachable at the current charge
 
 **Auto parry** starts off. Enable it with **K** or its row while playing survivor.
 An identified melee attack or lunge-hold animation triggers the equipped dagger's
-existing `ParryClient` when its killer is within 10 studs. Native readiness checks
+existing `ParryClient` when its killer is within 13 studs. Native readiness checks
 still apply, including cooldown, silence, health and other actions. Each observed
 attack gets at most one attempt. Recognized melee hold/lunge cues remain active
-while their animation is playing, so entering 10 studs after a long hold can
+while their animation is playing, so entering 13 studs after a long hold can
 trigger parry. Ordinary swing cues still expire after 0.8 seconds. Stopping the
 hold, changing character/role, or dying clears the cue. The inspected Veil melee and Jeff attack/lunge/Frenzy animation IDs and the
 shared `attack`/`lungehold` track names are recognized, including generic replicated
@@ -60,7 +60,7 @@ shared `attack`/`lungehold` track names are recognized, including generic replic
 names/IDs are not guessed. Detection depends on animation replication reaching you.
 The Heartbeat monitor runs only while an attack cue may enter range. Character
 parts are cached and the range check uses squared distance. Native readiness is
-checked once when the cue reaches 10 studs; a rejected cue waits for the next
+checked once when the cue reaches 13 studs; a rejected cue waits for the next
 attack instead of retrying each frame. No frame loop runs while idle or awaiting
 the result. Animation listeners attach only to killers. The native dagger client
 is cached from its result-event callback during setup/equip, with bounded setup
@@ -267,5 +267,5 @@ Masked's snake/Tony attacks alongside Jeff Frenzy. Alex rev-up/run are excluded.
 Roblox asset names and creator were checked on October 18; the asset record and
 attribution limits are in `scripts/fixtures/killer_attack_assets_2026_10_18.json`.
 These are detection candidates, not successful-parry evidence for every killer.
-The range is now 10 studs with no closing-distance condition. Nearby observations
+The range is now 13 studs with no closing-distance condition. Nearby observations
 and `lastDamage` retain bounded evidence through respawns for missed-hit reports.
