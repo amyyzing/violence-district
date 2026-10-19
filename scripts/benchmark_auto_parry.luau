@@ -28,7 +28,7 @@ local function measure(factory, nearby, holding)
 		FindFirstChild = function(_, name) lookups = lookups + 1 return name == "HumanoidRootPart" and root or {} end,
 		FindFirstChildOfClass = function() lookups = lookups + 1 return humanoid end,
 	}
-	local enemyRoot = { Position = position(holding and 16 or 10) }
+	local enemyRoot = { Position = position(holding and 11 or 10) }
 	local enemy = {
 		DescendantAdded = signal(), DescendantRemoving = signal(),
 		FindFirstChild = function() lookups = lookups + 1 return enemyRoot end,

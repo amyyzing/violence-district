@@ -141,7 +141,7 @@ return function(context)
 			sample.success and "parried" or "not parried"))
 	end
 	local function readyAtRange(killer, client, enemy, delta)
-		if delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z > 225 then return false end
+		if delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z > 100 then return false end
 		if enemy:GetAttribute("IsStunned") then return false end
 		-- Consume this cue even if native validation rejects it: never retry every frame.
 		local cue = cues[killer]
