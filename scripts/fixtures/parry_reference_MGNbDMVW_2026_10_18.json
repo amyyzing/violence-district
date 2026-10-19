@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-18",
+  "requestedSource": "https://pastebin.com/raw/MGNbDMVW",
+  "loaderSha256": "7278756933d346e285c49405da7caf10fb01888cb0c236eab1688e1449fc8f02",
+  "loaderProtection": "WeAreDevs / Prometheus-style VM with encrypted strings",
+  "resolvedPayload": "https://raw.githubusercontent.com/hamozdz/HM-HUB-Violence-District-BETA/refs/heads/main/Protected_7912138782446260.lua",
+  "payloadSha256": "787619bd0683769e1103f91c18fad59fec75fa5ac7bae4088467c1feb47bdb53",
+  "payloadProtection": "MoonSec V3",
+  "analysisMethod": "Isolated local Lua environment with fake game objects and blocked HTTP/dynamic loading. Captured decoded virtual bytecode before its VM executed; parsed its full structure separately without executing gameplay code.",
+  "virtualBytecodeBytes": 19821,
+  "parsedBytes": 19821,
+  "functionPrototypes": 29,
+  "constants": 495,
+  "keywordMatches": {
+    "parry": 0,
+    "dagger": 0,
+    "AnimationPlayed": 0,
+    "GetPlayingAnimationTracks": 0,
+    "lunge": 0,
+    "parryResult": 0
+  },
+  "observedFeatures": [
+    "Smart Hitbox Killer",
+    "Auto Generator",
+    "ESP Survivors",
+    "ESP Killers",
+    "Auto Grab",
+    "Auto Carry",
+    "Auto Hook",
+    "Anti-Stun",
+    "Anti-Shake"
+  ],
+  "payloadHttpSources": [
+    "https://raw.githubusercontent.com/jensonhirst/Orion/main/source"
+  ],
+  "conclusion": "The payload currently referenced by this Pastebin loader is HM HUB and exposes no auto-parry, dagger or attack-animation detection pattern in its fully parsed constant structure.",
+  "limitations": [
+    "Decoded VM structure and constants, not a complete reconstructed Lua source listing.",
+    "The referenced GitHub main-branch payload can change; these findings describe the captured SHA256 only.",
+    "No reference script executed in Roblox. No changes made to auto-parry gameplay logic."
+  ]
+}
