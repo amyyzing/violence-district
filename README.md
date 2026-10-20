@@ -281,3 +281,9 @@ by the game creator. The active Cure character's `Animations` script explicitly
 assigned our Cure IDs to `lungehold` and `attack`, confirming that attribution.
 Only Cure's character animation script was exposed in that client session;
 this was not a fresh source or combat check for the other seven killers.
+
+A subsequent Cure capture recognized an in-range lunge and swing before damage,
+but the dagger client was unbound. A fresh lookup successfully found the equipped
+native client. Recognized cues now restart the existing bounded/throttled lookup
+when an equipped survivor's dagger is still unbound, covering initialization
+that finishes after setup retries. Idle frames still perform no client searches.

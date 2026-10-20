@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-20",
+  "captureDurationSeconds": 180.006,
+  "captureStopped": true,
+  "stopReason": "180 second capture limit",
+  "killer": "Cure",
+  "melee": [
+    {
+      "holdId": "135002183282873",
+      "swingId": "121216847022485",
+      "holdAtSeconds": 69.791,
+      "swingAtSeconds": 69.861,
+      "holdDistance": 22.173,
+      "swingDistance": 21.984
+    },
+    {
+      "holdId": "135002183282873",
+      "swingId": "121216847022485",
+      "holdAtSeconds": 148.237,
+      "swingAtSeconds": 148.839,
+      "holdDistance": 196.671,
+      "swingDistance": 196.341
+    }
+  ],
+  "flask": {
+    "chargeId": "121108316060822",
+    "chargeCount": 3,
+    "idleId": "79390410596403",
+    "idleCount": 1,
+    "throwId": "99210996402874",
+    "throwCount": 3,
+    "recognizedAsMelee": false
+  },
+  "replicatedTrackName": "Animation",
+  "earlierMissFromRetainedDiagnostics": {
+    "holdRecognized": true,
+    "holdDistance": 9.003475,
+    "swingRecognized": true,
+    "swingDistance": 2.169298,
+    "healthBefore": 100,
+    "healthAfter": 60,
+    "distanceAtDamage": 2.423977,
+    "nativeClientBound": false,
+    "status": "Dagger client unavailable"
+  },
+  "rebindingProbe": {
+    "foundExistingNativeClient": true,
+    "lookupMilliseconds": 0.122
+  },
+  "fix": {
+    "logicVersion": 104,
+    "nativeClientBoundAfterLoading": true,
+    "behavior": "A fresh recognized cue retries bounded/throttled native-client discovery when an equipped survivor dagger is unbound. No per-frame searches."
+  },
+  "validation": {
+    "liveFixtureAssertions": 114,
+    "lifecycleAssertions": 420,
+    "offlineSuitePassed": true,
+    "bundleSyntaxPassed": true,
+    "successfulPostFixCureParryConfirmed": false
+  },
+  "limitations": [
+    "Both melee pairs during the bounded capture were outside the 13-stud range.",
+    "The in-range missed-hit sample was retained from before this capture, rather than captured by the temporary logger.",
+    "The exact reason the native client was unavailable during setup was not recorded; delayed-initialization recovery is covered by an isolated regression."
+  ]
+}

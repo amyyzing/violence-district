@@ -304,6 +304,26 @@ return function(factory)
 	clock = clock + 1
 	localCharacter.DescendantAdded:Fire({ Name = "Parrying Dagger", IsA = function() return false end })
 	clock = clock + 1 runTimers()
+	-- A dagger initialized after all setup retries must recover on a fresh cue.
+	localCharacter.DescendantRemoving:Fire(client.tool)
+	local search = feature._findClient
+	local delayedSearches = 0
+	feature._findClient = function() delayedSearches = delayedSearches + 1 return nil end
+	localCharacter.DescendantAdded:Fire({ Name = "Parrying Dagger", IsA = function() return false end })
+	clock = clock + 0.2 runTimers()
+	clock = clock + 0.6 runTimers()
+	clock = clock + 0.6 runTimers()
+	expect(not feature.getDiagnostics().clientBound and delayedSearches == 3, "Setup retries did not remain bounded")
+	for _ = 1, 1000 do heartbeat:Fire() end
+	expect(delayedSearches == 3, "Unbound dagger performed per-frame client searches")
+	feature._findClient = search
+	local lateCue = track("Animation")
+	lateCue.Animation.AnimationId = "rbxassetid://135002183282873"
+	local beforeRecovery = calls
+	feature._observe(killer, lateCue)
+	expect(feature.getDiagnostics().clientBound and calls == beforeRecovery + 1, "Late native dagger did not recover on Cure's cue")
+	expect(heartbeat:count() == 0, "Recovered native attempt retained a frame monitor")
+	result(false)
 	deferred = true
 	feature._observe(killer, track())
 	local before = calls

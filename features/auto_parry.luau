@@ -126,6 +126,15 @@ return function(context)
 		cues[killer] = { track = track, character = character, at = now() - age, observedAt = now(), holding = name == "lungehold" or holdIds[id] == true,
 			root = enemyRoot,
 			humanoid = character and character:FindFirstChildOfClass("Humanoid") }
+		-- The native dagger can finish initializing after the setup retry window.
+		-- Retry on a fresh cue only, with the existing throttle and bounded worker.
+		if not nativeClient and player.Team and player.Team.Name:lower():match("^survivor") then
+			local character = player.Character
+			if character and (character:FindFirstChild("Parrying Dagger") or character:FindFirstChild("Parry Dagger")) then
+				warmClient()
+				return
+			end
+		end
 		if not stepConnection then stepConnection = context.runService.Heartbeat:Connect(feature._step) end
 		feature._step()
 	end
