@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-20",
+  "currentRoster": [
+    "Stalker",
+    "Killer",
+    "Hidden",
+    "Abysswalker",
+    "Veil",
+    "Slasher",
+    "Masked",
+    "Cure"
+  ],
+  "assetVerification": {
+    "method": "Roblox MarketplaceService:GetProductInfo",
+    "count": 21,
+    "assetTypeId": 24,
+    "creatorGroupId": 8818124,
+    "missing": [],
+    "ids": [
+      "117042998468241",
+      "133963973694098",
+      "129784271201071",
+      "132817836308238",
+      "113255068724446",
+      "74968262036854",
+      "118907603246885",
+      "78432063483146",
+      "122812055447896",
+      "78935059863801",
+      "110355011987939",
+      "139369275981139",
+      "105374834496520",
+      "111920872708571",
+      "135002183282873",
+      "121216847022485",
+      "82666958311998",
+      "80411309607666",
+      "98163597193511",
+      "130593238885843",
+      "138720291317243"
+    ]
+  },
+  "sourceVerification": {
+    "killer": "Cure",
+    "script": "Active Cure character.Animations",
+    "configuration": "KillerActionController.start.animations",
+    "lungehold": "135002183282873",
+    "attack": "121216847022485"
+  },
+  "clientStructure": {
+    "sharedKillerModelAnimationInstances": 0,
+    "accessibleCharacterAnimationScripts": [
+      "Cure"
+    ]
+  },
+  "limitations": [
+    "Only Cure was verified against a live animation script in this session.",
+    "Asset availability does not prove every mapped ID is still used, or that every attack can be parried.",
+    "No combat success or changes to activation range/timing were established by this audit."
+  ]
+}

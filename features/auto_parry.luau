@@ -22,7 +22,7 @@ return function(context)
 		["122812055447896"] = true, -- Veil: veil Lunge
 		["110355011987939"] = true, -- Slasher/Jason: LungeHold-Jason
 		["105374834496520"] = true, -- Masked/Jacket: Jacket lunge
-		["135002183282873"] = true, -- Cure candidate: Lunge sc (SCP-labelled pair)
+		["135002183282873"] = true, -- Cure: lungehold, confirmed in live character script
 	}
 	local attackIds = {
 		["133963973694098"] = true, -- Stalker: Attack Stalker
@@ -32,7 +32,7 @@ return function(context)
 		["78935059863801"] = true, -- Veil: veil Swing
 		["139369275981139"] = true, -- Slasher/Jason: Attack-jason
 		["111920872708571"] = true, -- Masked/Jacket: jacket hit
-		["121216847022485"] = true, -- Cure candidate: Slash sc
+		["121216847022485"] = true, -- Cure: attack, confirmed in live character script
 		["82666958311998"] = true, -- Jeff: AttackFrenzy-m, observed during Frenzy
 		["80411309607666"] = true, -- Abyss M2 Ability
 		["98163597193511"] = true, -- Hiddenm2

@@ -266,7 +266,7 @@ even after an earlier success and report cooldown/resolving/silenced states
 without repeatedly invoking native readiness checks.
 
 Attack-ID coverage now includes the Stalker, Killer/Jeff, Hidden, Abysswalker,
-Veil, Slasher/Jason, Masked/Jacket, and a provisional SCP-labelled Cure pair.
+Veil, Slasher/Jason, Masked/Jacket, and Cure.
 The bounded hold lifetime follows the playing animation; ordinary swings still
 expire after 0.8 seconds. Added special cues include Abyss M2, Hidden M2, and
 Masked's snake/Tony attacks alongside Jeff Frenzy. Alex rev-up/run are excluded.
@@ -275,3 +275,9 @@ attribution limits are in `scripts/fixtures/killer_attack_assets_2026_10_18.json
 These are detection candidates, not successful-parry evidence for every killer.
 The range is now 13 studs with no closing-distance condition. Nearby observations
 and `lastDamage` retain bounded evidence through respawns for missed-hit reports.
+
+On October 20, all 21 mapped attack/hold assets still resolved as animations owned
+by the game creator. The active Cure character's `Animations` script explicitly
+assigned our Cure IDs to `lungehold` and `attack`, confirming that attribution.
+Only Cure's character animation script was exposed in that client session;
+this was not a fresh source or combat check for the other seven killers.
