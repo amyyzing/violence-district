@@ -1,0 +1,204 @@
+{
+  "date": "2026-10-20",
+  "source": "Live ReplicatedStorage.Perks and ReplicatedStorage.Items description attributes",
+  "perks": [
+    {
+      "name": "Absolute confidence",
+      "description": "Whilst you are in a chase, Survivors within 180 studs will gain a 3/5/7% Action Speed boost and have their aura revealed to you. \"Ladies, I've got this\""
+    },
+    {
+      "name": "Against All Odds",
+      "description": "You're only precise when it matters the most. Whilst healing a Survivor in the dying state, gain a 50/60/70% Healing speed boost and reveal the aura of the Killer. \"My destiny is in no man's hand but mine.\""
+    },
+    {
+      "name": "Ambitious Medic",
+      "description": "Whenever you are injured and land a great skill check, your healing progress will be recovered by 2 Charges; this effect has a sound cue when triggered. This perk also increases your default skill check trigger chance by 40%. Additionally, healing skill checks will be 40% slower if both Survivors are using this perk. \"I've always wanted to be a doctor but fate had other plans...\""
+    },
+    {
+      "name": "Born in Blood",
+      "description": "When a heal action on another Survivor started by you finishes, you and the healed Survivor gain a 10/20/30% Speed boost for 6 seconds. \"Born in blood... both of us.\""
+    },
+    {
+      "name": "Built different",
+      "description": "Your plot armor always comes in clutch. Whenever you heal up from the dying state by any means, gain the Endurance Status Effect for 6/7/8 seconds, Additionally allows you to pick yourself back up once from the dying state once per round. \"Did you really think i was some random?\""
+    },
+    {
+      "name": "Call Me Back",
+      "description": "Communication is key. When a Survivor you healed gets hit by the Killer, their aura will be revealed to you for 20/30/40 seconds. \"Hello? yeah it happened again.\""
+    },
+    {
+      "name": "Debut Showcase",
+      "description": "Whenever you parry, stun, or blind the Killer, the aura of the Killer will be revealed to every Survivor for 3/4/5 seconds. \"Is this an audition or a movie??\""
+    },
+    {
+      "name": "Desperate",
+      "description": "Desperate times create desperate measures After being picked up by the Killer, instantly gain 10/15/20% Wiggle progression. \"No, no, no, no! Wait, wait, wait, wait!\""
+    },
+    {
+      "name": "Enhanced Touch",
+      "description": "After a heal action on another Survivor started by you finishes, the healed Survivor gains a 10% boost to Healing and Repairing, plus a 5% boost to Movement for 20/25/30 seconds. Talent beats hard work."
+    },
+    {
+      "name": "Expensive Decor",
+      "description": "Increase the speed other Survivors heal you by 30/40/50%. Half of this increase is replaced by an additive 10% Healing speed boost each time you get spiked. \"Never the same.\""
+    },
+    {
+      "name": "Eyes of Heaven",
+      "description": "The aura of all Pallets and Windows are revealed to you within an 80/90/100 stud range. \"Yes the name is a jojo reference.\""
+    },
+    {
+      "name": "Familiar Soul",
+      "description": "Years of hardship to escape this nightmare made you all familiar with each other, The aura of other Survivors is revealed to you within an 80/100/120 stud range. \"You spend enough time with someone, you don’t need eyes to find them.\""
+    },
+    {
+      "name": "Flawless Execution",
+      "description": "While repairing a Generator and hitting consecutive great skill checks while alone, gain a 3%/4%/5% Repair speed boost until you miss. After your third consecutive great skill check, this effect is increased by an additional 1%/2%/3%. Each skill check you hit decreases the duration of the next by 0.05/0.075/0.1 seconds until you miss. You have an 8/10/12 second window to return to your generator after leaving. \"A puzzle is always easier the second time solving it\""
+    },
+    {
+      "name": "Flowstate",
+      "description": "When you perform a fast window vault while this perk is active, you vault 20% quicker with a special animation. This perk has a cooldown of 70/60/50 seconds. \"I understand it now.\""
+    },
+    {
+      "name": "Grab My Hand",
+      "description": "After you unspike a Survivor, gain a 75% Healing speed boost for 45/60/75 seconds. \"C'mon get out of here\""
+    },
+    {
+      "name": "Great Collapse",
+      "description": "Whenever you stun the Killer using a Pallet, gain a 20/30/30% Speed boost for 2/2/3 seconds. This perk does not activate whilst you have the Winded Status Effect. Applies the Winded Status Effect for 40 seconds after triggering. \"Fighting back is always an option... and running away after.\""
+    },
+    {
+      "name": "Group Project",
+      "description": "Gain a 3/5/7% Repair speed per Survivor on the same generator as you. This effect is shared to every Survivor repairing the generator. Does not stack with itself if two or more Survivors are using it. \"I'm telling you its the red wire first then the yellow now get movin'.\""
+    },
+    {
+      "name": "Heads Up",
+      "description": "When the Killer gets within a 50 stud range of you, receive a sound cue, reveal the aura of the Killer, and gain a 10/15/20% Speed boost for 3 seconds. This perk does not activate whilst you have the Winded Status Effect. Applies the Winded Status Effect for 40 seconds after triggering. \"Did you hear that?\""
+    },
+    {
+      "name": "Hearing Aid",
+      "description": "Whenever the Killer breaks a Pallet or damages a generator within a 240 stud range, reveal the aura of the Killer to you for 4/5/6 seconds. \"Gosh this guy's really loud\""
+    },
+    {
+      "name": "High Karma",
+      "description": "The universe never forgets good deeds, After unspiking a Survivor, this perk activates, allowing you to successfully unspike yourself the first time you are spiked. Unspiking yourself with this perk applies the Anti-Heal Status Effect for 90/75/60 seconds. \"What you give you get back.\""
+    },
+    {
+      "name": "Intense Workout",
+      "description": "Whenever you unspike a Survivor, you do it 40/45/50% faster and give them a 10% Speed boost for 8 seconds. \"U 'mirin my biceps brah?\""
+    },
+    {
+      "name": "Iron Tranquility",
+      "description": "Your willpower transcends torment. Whilst on the spike, your aura is hidden from the Killer. Additionally, this perk decreases the lifetime of your blood pools by 3/4/5 seconds. \"What do you mean I'm spiked? I'm perfectly fine.\""
+    },
+    {
+      "name": "Last Stand",
+      "description": "When the escape gates are powered, heal a soul state and reveal the aura of the Killer for 10/15/20 seconds. \"I must stand my ground, through the grief, through the loss, I will pass, for them, for all."
+    },
+    {
+      "name": "Left Behind",
+      "description": "When the escape gates are powered, gain a 5/6/7% Speed boost. \"I'll make it out just to spite them.\""
+    },
+    {
+      "name": "No Pain No Gain",
+      "description": "Become permanently Injured and gain the ability to self recover from the dying state. This perk additionally stops the creation of blood pools and provides a 20/25/30% Self-Recovery Speed boost. \"If you want it hard enough, You'll suffer close enough.\""
+    },
+    {
+      "name": "Nobody Left Behind",
+      "description": "When the escape gates are powered, reveal the aura of every Survivor to you and gain a 55/65/75% boost to Healing and Unspiking. \"Let's make it out of here.\""
+    },
+    {
+      "name": "On My Own",
+      "description": "When you are the last Survivor alive, reveal the aura of the Killer for 10 seconds and gain a 40/50/60% Opening Speed boost. \"Still ain't given up yet.\""
+    },
+    {
+      "name": "On Screen Fear",
+      "description": "Whenever you are in the terror radius of the Killer and not in chase, gain a 1/2/3% Movement Speed boost and a 5/8/10% boost to Healing and Repairing. \"Nothing more cliche than reusing a perk name\""
+    },
+    {
+      "name": "Pacifist",
+      "description": "Gain a 20% Healing speed boost. This is increased by an additional 5/7/10% per Survivor missing from the normal 5 by any means. \"Strength in numbers... Or not...\""
+    },
+    {
+      "name": "Partners In Crime",
+      "description": "When it's just you and your duo, you can work together to accomplish the impossible. When you and another survivor are both in the killer's terror radius for 15 seconds but not in chase, gain one token, up to 3. For every token you have, you gain a 2/3/4% repair speed bonus. You lose one token every 25 seconds while not repairing a generator, and you lose 1 token upon entering chase. \"If we wanna do this, we're gonna have to work together.\""
+    },
+    {
+      "name": "Perfect Landing",
+      "description": "When falling from heights, recover 75% faster and gain a 40% Speed boost for 3 seconds. This perk does not activate whilst you have the Winded Status Effect. Applies the Winded Status Effect for 60/50/40 seconds after triggering. \"it's not just cool, it's practical too.\""
+    },
+    {
+      "name": "Perfectionist Planning",
+      "description": "The aura of 3 unrepaired Generators closest to each other are revealed to you. Repairing these Generators allows you to repair them 10% faster, as well as revealing their aura to other Survivors for 35/45/55 seconds. Repairing any other Generator is 5% slower. \"Strategy won more wars than muscle.\""
+    },
+    {
+      "name": "Quick Recovery",
+      "description": "Jumping over obstacles became natural to you, Whenever you fast or medium vault a Window, gain a 40% Speed boost for 3 seconds. This perk does not activate whilst you have the Winded Status Effect. Applies the Winded Status Effect for 70/60/50 seconds after triggering. \"The icing on the cake.\""
+    },
+    {
+      "name": "Second Wind",
+      "description": "The jester hates tunnelers and grants you a blessing, After you are unspiked, increase the duration of the Endurance Status Effect by 15/20/25 seconds. \"Bring a pickaxe while you're at it, tunneler...\""
+    },
+    {
+      "name": "Snake Step",
+      "description": "While crouched, stop the Killer from revealing your aura. This has a cooldown of 45 seconds. Additionally, this perk increases your crouching speed by 90/100/110%. \"HSSSSSSSSSS - a snake idk\""
+    },
+    {
+      "name": "Time To Grow Up",
+      "description": "Increases the duration of the Speed boost after being hit by 1/2/3 seconds. \"You with me man? Time to grow up.\""
+    },
+    {
+      "name": "Visual Learner",
+      "description": "Whenever a Generator gets completed, gain a token. You start with 1 token by default. After fast vaulting, a token is used and reveals the aura of the Killer for 3/4/5 seconds if they are within a 150 stud range. This has a cooldown of 25 seconds. Additionally, this perk increases any aura read duration by 2 seconds. \"My minds eye guides me through the dark\""
+    },
+    {
+      "name": "We're Stronger Together",
+      "description": "Whenever you are within 15 studs of any Survivor, every Survivor within the range gains a 4/5/6% Speed boost. \"ape together strong\""
+    }
+  ],
+  "items": [
+    {
+      "name": "Adrenaline Shot",
+      "description": "Inject this adrenaline shot for a little boost to your heart rate, using this item normally will give you a 7% speed boost for 10 seconds with a 6.55% slowdown for 3 seconds afterwards. if you use this item whilst in the dying state, pick yourself back up for 12 seconds. This item has a 60 second cooldown. \"Side effects include amplified mustache growth and sudden confidence.\""
+    },
+    {
+      "name": "Bandage",
+      "description": "A simple bandage, allows you to heal yourself 2 heath states with each health state taking 24 seconds to heal. \"Gone are the days of spamming crouch in order to get healed.\""
+    },
+    {
+      "name": "Flashlight",
+      "description": "Shining this flashlight on the killer's face will cause blindness and force them to drop any survivor they are holding. \"Shine bright like a diamond.\""
+    },
+    {
+      "name": "Gate",
+      "description": "Never been much of a fan of walking, Allows you to spawn a teleport point that lasts for 7 seconds to a random place on the map. Creating the teleport point takes 3 seconds, you cannot run during this windup. After use goes on a 60 second cooldown, if interrupted goes on a 5 second cooldown instead. \"Crimson horns, With Gem-cut eyes, An apple fell, From a Serpent's lies.\""
+    },
+    {
+      "name": "Holy Water",
+      "description": "Never been a fan of vampires and mythical creatures alike. Throw and create an 8 stud radius area that slows the killer up to 18%. This area lasts for 10 seconds and slows the killer down by 6% every 0.5 seconds. The killer recovers 6% per second when leaving the area. This item has a 70 seconds cooldown. \"Blessed by a member of the clergy.\""
+    },
+    {
+      "name": "Motion Tracker",
+      "description": "Your ingenuity always puts you one step ahead, Hold down the item to activate the tracker, this will result in the tracker beeping faster and pitchier depending on how close the killer is within a 250 stud radius. \"Weee wooo\""
+    },
+    {
+      "name": "Parrying Dagger",
+      "description": "Flick your dagger into a guarding stance that protects you. After use, gain the ability to parry the killer's attack for 0.8 seconds. Parrying the killer will stun them for 4 seconds. This item goes on a 90 second cooldown if you successfully parry, otherwise goes on a 60 second cooldown. \"A favorite of the knights of Carim, who are famous for fighting without a shield.\""
+    },
+    {
+      "name": "Riot Shield",
+      "description": "There's no stopping until you hit a target. Start from walking speed and ramp up to 18 studs per second over the course of 4 seconds. This charge can last up to 35 seconds or until you hit a wall or the killer. If you were charging for at least 3 seconds, the killer will be stunned. This item has a 50 second cooldown. \"WARNING: this item requires massive courage.\""
+    },
+    {
+      "name": "Shadow Clone",
+      "description": "Perform a sequence of hand signs, conjuring a thick cloud of smoke. From the smoke emerges a clone that runs forward in the direction you were facing to either disorient or fool the killer. This item goes on cooldown for 60 seconds after being used, or 5 seconds if interrupted. \"Because that is my ninja way.\""
+    },
+    {
+      "name": "Twist of Fate",
+      "description": "This hellforged firearm carries your soul in its chamber, Gain the ability to aim and fire the weapon with a 60% chance of firing and a 40% chance to misfire. Successfully shooting the killer will result in them getting stunned for 2 seconds, a misfire will result in losing a health state. \"This gamble isn’t just a matter of leaving it to fate!\""
+    },
+    {
+      "name": "WaxBound Candle",
+      "description": "A bound between the survivor and the candle, After use, reveals the killer's aura in rapid succession to you for 5 seconds. This item has 6 uses and goes on a cooldown of 30 seconds after use. “Born from the machine’s own wax, its light betrays its creator”"
+    }
+  ]
+}
