@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-25",
+  "logicVersion": 106,
+  "killer": "Butcher",
+  "source": "Live auto-parry pending attempt completed by native parryResult",
+  "success": true,
+  "distanceStuds": 9.030791282653809,
+  "cueToCallMs": 0.12199999764561653,
+  "callToReplyMs": 851.8123999820091,
+  "reportedCooldown": 0,
+  "limits": "One successful automatic attempt; reply duration includes network travel and parry resolution, not server-only processing time."
+}

@@ -37,3 +37,10 @@ and exactly one successful source read/resolution for the active Butcher. No
 idle range monitor was installed. Existing feature preferences and selected
 skill-check mode were preserved. This confirms discovery and binding, not a
 successful parry against every killer.
+
+A subsequent live automatic attempt against Butcher returned `success=true`
+at 9.0308 studs. Cue-to-native-call time was about 0.122 ms and call-to-result
+about 851.812 ms; the latter includes network travel and parry resolution, not
+server-only processing. The response reported cooldown 0. This establishes one
+successful automatic parry with version 106, not universal coverage. The compact
+record is in `scripts/fixtures/parry_butcher_2026_10_25.json`.
