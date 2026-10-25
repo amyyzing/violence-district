@@ -1,5 +1,9 @@
 # Survivor solo queue loadout comparison — 2026-10-20
 
+**Historical:** The Halloween update made Time To Grow Up a Winded perk and
+changed Quick Recovery. The independent-trigger synergy recommended below no
+longer applies; this catalog and ranking describe the October 20 game.
+
 Scope: strongest overall solo queue setup, using fully upgraded perks. The live
 ReplicatedStorage description catalog contains 38 survivor perks and 11 tools:
 8,436 perk triples and 92,796 perk/tool combinations. The accompanying script

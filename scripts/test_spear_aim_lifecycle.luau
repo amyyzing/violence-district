@@ -39,6 +39,17 @@ return function(source)
 	local checks = 0
 	local function expect(value, message) assert(value, message) checks = checks + 1 end
 	local ok, err = pcall(function()
+		local attributes = {}
+		player.GetAttribute = function(_, name) return attributes[name] end
+		expect(logic._projectileInputMatches({UserInputType=Enum.UserInputType.MouseButton1}), "Default mouse charge was ignored")
+		attributes.kb_basicattack = "Q"
+		expect(logic._projectileInputMatches({UserInputType=Enum.UserInputType.Keyboard,KeyCode=Enum.KeyCode.Q}), "Remapped keyboard charge was ignored")
+		expect(not logic._projectileInputMatches({UserInputType=Enum.UserInputType.MouseButton1}), "Old mouse charge survived a remap")
+		attributes.kb_basicattack = "MouseButton3"
+		expect(logic._projectileInputMatches({UserInputType=Enum.UserInputType.MouseButton3}), "Remapped mouse charge was ignored")
+		attributes.pad_basicattack = "ButtonA"
+		expect(logic._projectileInputMatches({UserInputType=Enum.UserInputType.Gamepad1,KeyCode=Enum.KeyCode.ButtonA}), "Remapped gamepad charge was ignored")
+		expect(not logic._projectileInputMatches({UserInputType=Enum.UserInputType.Gamepad1,KeyCode=Enum.KeyCode.ButtonR2}), "Old gamepad charge survived a remap")
 		logic._watchProjectileCharacter(localCharacter)
 		task.wait()
 		animation("87436543050891")

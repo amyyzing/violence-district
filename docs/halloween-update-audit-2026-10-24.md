@@ -50,7 +50,7 @@ and 17 ms delay, while the current shared module has 0.3 seconds and 12 ms.
   `scripts/fixtures/veil_halloween_2026_10_24.luau`. Offline checks compare the
   preview with those values and an independent midpoint flight integrator.
 - Roblox isolated fixtures passed: 2,241 projectile assertions against the live
-  math module/collision fixtures, 154 fake-camera lifecycle assertions, 420
+  math module/collision fixtures, 160 fake-camera lifecycle assertions, 420
   resource-lifetime assertions, and the native skill-check callback/tween suite,
   including remapped keyboard/mouse input and skipping visible trap prompts.
 - These tests do not establish actual throw impact accuracy, successful parries,
@@ -63,3 +63,8 @@ and 17 ms delay, while the current shared module has 0.3 seconds and 12 ms.
 - The October 20 loadout report is historical: Time To Grow Up now conflicts
   with other Winded perks, and Quick Recovery was changed. A new strongest-build
   conclusion requires comparing the refreshed perk/tool catalog.
+
+Version 105 was loaded into the connected client. Readback confirmed its GUI,
+retained feature preferences, bound native dagger client, and both cached native
+skill-check callbacks belonging to the current character. No successful automatic
+parry or actual Veil impact was established by this readback.
