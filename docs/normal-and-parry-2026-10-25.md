@@ -31,3 +31,9 @@ assertions (including native callback discovery), 420 resource-lifetime
 assertions and the skill-check boundary/tween/callback suite. Normal tests cover
 102/108/116 rejection, 117 and 159 acceptance, and a skip beyond 159. These are
 isolated checks, not proof of a successful parry against every killer in combat.
+
+Live installation readback confirmed version 106, a bound native dagger client,
+and exactly one successful source read/resolution for the active Butcher. No
+idle range monitor was installed. Existing feature preferences and selected
+skill-check mode were preserved. This confirms discovery and binding, not a
+successful parry against every killer.
