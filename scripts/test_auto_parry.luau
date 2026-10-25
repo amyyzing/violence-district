@@ -27,6 +27,7 @@ return function(factory)
 		local humanoid = { Health = 100, HealthChanged = signal(), IsA = function(_, class) return class == "Humanoid" end, FindFirstChildOfClass = function() end }
 		local model = { DescendantAdded = signal(), DescendantRemoving = signal(), dagger = true, stunned = false }
 		function model:FindFirstChild(name)
+			if name == "Animations" then return self.animationsScript end
 			if name == "HumanoidRootPart" then return root end
 			if name == "Parrying Dagger" and self.dagger then return {} end
 		end
@@ -56,6 +57,8 @@ return function(factory)
 	local text, deferred, queue = "", false, {}
 	local input = {}
 	local timers = {}
+	local sourceReads = 0
+	enemy.animationsScript = { Name = "Animations", IsA = function(_, class) return class == "LocalScript" end }
 	local function runTimers()
 		for index = #timers, 1, -1 do
 			if timers[index].at <= clock then
@@ -65,6 +68,14 @@ return function(factory)
 		end
 	end
 	local feature = factory({
+		readAnimationSource = function()
+			sourceReads = sourceReads + 1
+			return [[local controller = start({
+				vmAnimations = {attack = "rbxassetid://900000001"},
+				animations = {lungehold = "rbxassetid://900000002", attack = "rbxassetid://900000003"},
+				trackAnimations = {Stunned = "rbxassetid://900000004"}
+			})]]
+		end,
 		players = players, player = player, input = input, storage = folder,
 		runService = { Heartbeat = heartbeat }, clock = function() return clock end,
 		spawn = function(callback) if deferred then queue[#queue + 1] = callback else callback() end end,
@@ -100,6 +111,7 @@ return function(factory)
 	expect(heartbeat:count() == 0, "Repeated idle enable installed a Heartbeat loop")
 	for _ = 1, 1000 do heartbeat:Fire() end
 	expect(clientSearches == setupSearches and readinessChecks == 0, "Idle feature searched callbacks or checked native readiness")
+	expect(sourceReads == 1, "Character setup did not cache its animation source")
 	killer.Team.Name = "Survivors" teamChanged:Fire()
 	expect(enemy.DescendantAdded:count() == 0, "Survivor retained character animation monitoring")
 	killer.Team.Name = "Killer" teamChanged:Fire()
@@ -252,6 +264,8 @@ return function(factory)
 		{ "Abysswalker", "118907603246885", "78432063483146" },
 		{ "Veil", "122812055447896", "78935059863801" },
 		{ "Halloween Veil", "84926129581106", "81963230963908" },
+		{ "Butcher", "127417297154354", "83333467665074" },
+		{ "Fresh controller discovered on spawn", "900000002", "900000003" },
 		{ "Slasher", "110355011987939", "139369275981139" },
 		{ "Masked", "105374834496520", "111920872708571" },
 		{ "Cure candidate", "135002183282873", "121216847022485" },
@@ -329,6 +343,17 @@ return function(factory)
 	expect(feature.getDiagnostics().clientBound and calls == beforeRecovery + 1, "Late native dagger did not recover on Cure's cue")
 	expect(heartbeat:count() == 0, "Recovered native attempt retained a frame monitor")
 	result(false)
+	expect(sourceReads == 1, "Combat or role changes repeated source discovery for an unchanged script")
+	for _, id in ipairs({ "900000001", "900000004" }) do
+		local nonMelee = track("Animation") nonMelee.Animation.AnimationId = "rbxassetid://" .. id
+		local beforeIgnore = calls
+		feature._observe(killer, nonMelee)
+		expect(calls == beforeIgnore, "Viewmodel or stun asset was classified as melee")
+	end
+	expect(not feature._registerAnimationSource('return { vmAnimations = { attack="rbxassetid://900000005" } }'),
+		"Source without a third-person table was accepted")
+	expect(not feature._registerAnimationSource('return { animations = { attack=chooseTrack() } }'),
+		"Computed animation value was guessed")
 	deferred = true
 	feature._observe(killer, track())
 	local before = calls

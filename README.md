@@ -1,5 +1,23 @@
 # Cateyes
 
+## Normal checks and current killer animations (October 25, logic 106)
+
+Normal mode waits until the needle has left the great window: it only submits
+above 116 degrees through 159 degrees relative to the goal. It never takes the
+102–116 great window. Perfect retains its center target and normal-hit fallback.
+A stalled frame that skips the entire normal region can still miss in Normal.
+
+Auto parry includes the current Butcher melee hold/swing IDs. For other killers,
+it reads their live character's `Animations` controller once during setup and
+caches literal third-person `lungehold`, `attack`, and `attackfr` IDs. It does not
+scan source during attack/range checks, execute source, or treat equip, stun,
+trap, chain, or viewmodel tracks as attacks. If source reading is unavailable or
+a controller computes its IDs instead of declaring literals, inspected fallback
+IDs still work but new IDs may need a targeted update. `getParryDiagnostics()`
+reports source-read/resolution counts. Discovery does not guarantee that every
+attack arrives early enough to parry or bypass native item restrictions.
+
+
 ## Halloween update compatibility (October 24, logic 105)
 
 The current live `Modules.Killers.Veil.SpearMath` replaces the older projectile
@@ -53,10 +71,9 @@ maximizes or minimizes the same panel into its icon cube in 0.4 seconds.
 The minimized cube is also draggable and remembers its own position across reloads.
 The panel automatically fits smaller viewports.
 
-Skill checks react to needle rotation updates and use the game's full great-hit
-window. Perfect mode aims near its center; if a fast frame skips the great
-window, either mode takes a valid normal hit when possible. Frame stalls that
-skip both windows can still cause misses.
+Skill checks react to needle rotation updates. Perfect aims inside the great
+window and can fall back to normal when a fast frame skips it. Normal only
+uses the normal-hit region. Frames that skip the selected region can still miss.
 Skill checks call the current character's native generator/healing keyboard
 handlers directly, so simulated Space input, mouse capture and Roblox menu
 keyboard routing are not required. The game still evaluates the real needle

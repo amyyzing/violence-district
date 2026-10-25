@@ -63,7 +63,7 @@ return function(factory)
 		return check
 	end
 	local function hit(check)
-		check.Line.Rotation = check.Goal.Rotation + 108
+		check.Line.Rotation = check.Goal.Rotation + (mode == "Normal" and 130 or 108)
 		step:Fire()
 		task.wait()
 	end
@@ -183,7 +183,11 @@ return function(factory)
 		rotationCase({ 70, 100, 130, 160 }, 130)
 		rotationCase({ 100, 159, 180 }, 159)
 		rotationCase({ 100, 160, 468 }, nil)
-		rotationCase({ 90, 102, 120 }, 102, "Normal")
+		rotationCase({ 90, 102, 108, 116 }, nil, "Normal")
+		rotationCase({ 90, 102, 116, 117, 140 }, 117, "Normal")
+		rotationCase({ 90, 102, 120 }, 120, "Normal")
+		rotationCase({ 116, 159 }, 159, "Normal")
+		rotationCase({ 116, 160 }, nil, "Normal")
 		rotationCase({ 90, 116, 130 }, 116)
 		for _, fps in ipairs({ 30, 60, 120 }) do
 			for _, duration in ipairs({ 0.4, 0.65, 1.3 }) do

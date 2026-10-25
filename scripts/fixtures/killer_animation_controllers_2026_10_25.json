@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-25",
+  "source": "Live killer character Animations LocalScript, third-person animations table",
+  "Butcher": {
+    "lungehold": "127417297154354",
+    "attack": "83333467665074",
+    "excluded": {
+      "placetrap": "132475036202731",
+      "throwchainplanted": "134450878841800",
+      "pullchainplanted": "110719912556676",
+      "chainidle": "93916891177609",
+      "chainlatch": "121332705762895"
+    }
+  },
+  "discovery": "Read literal lungehold, attack and attackfr entries from the live character's animations table once during setup; do not execute source or use vmAnimations/trackAnimations."
+}

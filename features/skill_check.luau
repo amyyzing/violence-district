@@ -155,12 +155,15 @@ return function(c)
 		if relativeRotation < SUCCESS_MIN or relativeRotation > NORMAL_MAX then
 			return false
 		end
+		if c.getMode() == "Normal" then
+			return relativeRotation > SUCCESS_MAX
+		end
 		-- A fast tween can skip the entire great zone between rendered frames.
 		-- The game still accepts this following region as a normal hit.
 		if relativeRotation > SUCCESS_MAX then
 			return true
 		end
-		if c.getMode() ~= "Perfect" or relativeRotation >= PERFECT_TARGET then
+		if relativeRotation >= PERFECT_TARGET then
 			return true
 		end
 

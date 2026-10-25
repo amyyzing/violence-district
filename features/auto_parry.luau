@@ -12,9 +12,13 @@ return function(context)
 	local delay = context.delay or function(seconds, callback) task.delay(seconds, callback) end
 	local generation = 0
 	local status = "Off"
+	local readAnimationSource = context.readAnimationSource or decompile
+	local animationSources = setmetatable({}, { __mode = "k" })
+	local animationSourceReads = 0
 	-- Replicated tracks may be named only "Animation". Match inspected attack assets too.
 	-- Asset names checked with Roblox metadata; see scripts/fixtures/killer_attack_assets_2026_10_18.json.
 	local holdIds = {
+		["127417297154354"] = true, -- Butcher: current live melee controller
 		["84926129581106"] = true, -- Halloween Veil: inspected current Animations script
 		["117042998468241"] = true, -- Stalker: Stalker lunge
 		["129784271201071"] = true, -- Killer/Jeff: LungeHold-jeff
@@ -26,6 +30,7 @@ return function(context)
 		["135002183282873"] = true, -- Cure: lungehold, confirmed in live character script
 	}
 	local attackIds = {
+		["83333467665074"] = true, -- Butcher: current live melee controller
 		["81963230963908"] = true, -- Halloween Veil: observed and inspected current melee swing
 		["133963973694098"] = true, -- Stalker: Attack Stalker
 		["132817836308238"] = true, -- Killer/Jeff: Attack-jeff
@@ -41,6 +46,23 @@ return function(context)
 		["130593238885843"] = true, -- Masked: snake attack
 		["138720291317243"] = true, -- Masked: tony attack
 	}
+
+	function feature._registerAnimationSource(source)
+		if type(source) ~= "string" then return false end
+		-- Read only the third-person controller's literal animations table. Never
+		-- execute source or classify equip/chain/trap/viewmodel tracks as melee.
+		local animations = source:match("%f[%w_]animations%f[^%w_]%s*%=%s*(%b{})")
+		if not animations then return false end
+		local found = false
+		for _, name in ipairs({ "lungehold", "attack", "attackfr" }) do
+			local id = animations:match("%f[%w_]" .. name .. "%f[^%w_]%s*%=%s*[\"']rbxassetid://(%d+)[\"']")
+			if id then
+				if name == "lungehold" then holdIds[id] = true else attackIds[id] = true end
+				found = true
+			end
+		end
+		return found
+	end
 
 	local function report(text)
 		if status == text then return end
@@ -255,9 +277,24 @@ return function(context)
 		watchers[other] = watcher
 		local function bind(character)
 			disconnect(watcher.characterConnections)
+			watcher.character, watcher.source = character, nil
 			cues[other] = nil
 			if not other.Team or other.Team.Name ~= "Killer" then return end
 			local bound
+			local function readAnimations(source)
+				if source.Name ~= "Animations" or not source:IsA("LocalScript") or watcher.source == source then return end
+				watcher.source = source
+				if animationSources[source] or type(readAnimationSource) ~= "function" then return end
+				-- One bounded read on character setup, never in _observe/_step.
+				spawn(function()
+					animationSourceReads = animationSourceReads + 1
+					local ok, text = pcall(readAnimationSource, source)
+					if ok and context.getEnabled() and watchers[other] == watcher and watcher.character == character
+						and other.Character == character and other.Team and other.Team.Name == "Killer" then
+						animationSources[source] = feature._registerAnimationSource(text)
+					end
+				end)
+			end
 			local function animatorAdded(animator)
 				if not animator:IsA("Animator") or bound == animator then return end
 				bound = animator
@@ -268,7 +305,12 @@ return function(context)
 					for _, track in ipairs(animator:GetPlayingAnimationTracks()) do feature._observe(other, track, true) end
 				end
 			end
-			connect(watcher.characterConnections, character.DescendantAdded, animatorAdded)
+			connect(watcher.characterConnections, character.DescendantAdded, function(item)
+				readAnimations(item)
+				animatorAdded(item)
+			end)
+			local source = character:FindFirstChild("Animations")
+			if source then readAnimations(source) end
 			local humanoid = character:FindFirstChildOfClass("Humanoid")
 			local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
 			if animator then animatorAdded(animator) end
@@ -375,7 +417,10 @@ return function(context)
 	end
 	function feature.toggle() feature.setEnabled(not context.getEnabled()) end
 	function feature.getDiagnostics()
+		local resolved = 0
+		for _, found in pairs(animationSources) do if found then resolved = resolved + 1 end end
 		return { status = status, pending = pending, history = history, lastBlocked = lastBlocked, observations = observations, lastDamage = lastDamage,
+			animationSourceReads = animationSourceReads, animationSourcesResolved = resolved,
 			clientBound = equipped(nativeClient) == true, monitoring = stepConnection ~= nil }
 	end
 	function feature.destroy() stop() nativeClient = nil end
