@@ -41,13 +41,13 @@ return function(source)
 	local ok, err = pcall(function()
 		logic._watchProjectileCharacter(localCharacter)
 		task.wait()
-		animation("92098503722633")
+		animation("87436543050891")
 		expect(bindings.CateyesSpearAim ~= nil, "Charge did not bind aim")
 		task.wait(1.02)
 		local previousDirection = camera.CFrame.LookVector
 		bindings.CateyesSpearAim.callback(1 / 60)
 		local aim = logic._spearAimDebug
-		expect(aim and aim.direction and aim.speed == 142.5, "Charge did not produce medium-speed intercept")
+		expect(aim and aim.direction and aim.speed == 180, "Charge did not produce charged-speed intercept")
 		local remaining = (camera.CFrame.LookVector - aim.direction).Magnitude
 		expect(remaining > 0.0001 and remaining < (previousDirection - aim.direction).Magnitude,
 			"Camera did not ease toward the launch direction")
@@ -61,29 +61,29 @@ return function(source)
 		expect(moving.velocity.X < -5 and math.abs(moving.velocity.Z) < 0.001,
 			"Stale assembly velocity overrode observed sideways movement")
 		expect(moving.point.X < targetRoot.Position.X, "Predicted point did not lead in the observed velocity direction")
-		animation("93136435416899")
+		animation("101443662521580")
 		bindings.CateyesSpearAim.callback(1 / 60)
-		expect(logic._spearAimDebug.speed == 142.5, "Release changed medium shot to full speed")
+		expect(logic._spearAimDebug.speed == 180, "Release changed capped shot speed")
 		expect((camera.CFrame.LookVector - logic._spearAimDebug.direction).Magnitude < 0.0001,
 			"Smoothing left an aiming offset on release")
 		task.wait(0.17)
 		bindings.CateyesSpearAim.callback(1 / 60)
 		expect(not bindings.CateyesSpearAim and not logic._spearAimDebug, "Release retained camera lock")
-		animation("92098503722633")
+		animation("87436543050891")
 		localCharacter:SetAttribute("spearmode", false)
 		task.wait()
 		expect(not bindings.CateyesSpearAim, "Weapon switch retained camera lock")
 		localCharacter:SetAttribute("spearmode", true)
-		animation("92098503722633")
+		animation("87436543050891")
 		logic._loadFeatureModule = function(_, fallback, context) return fallback and fallback(context) or {} end
 		logic.setSpearAimEnabled(false)
 		expect(not bindings.CateyesSpearAim, "Disabling feature retained camera lock")
 		logic.setSpearAimEnabled(true)
 		expect(bindings.CateyesSpearAim ~= nil, "Re-enabling during charge did not bind aim")
 		for _ = 1, 40 do
-			animation("92098503722633")
+			animation("87436543050891")
 			expect(#getconnections(stopped.Event) == 1, "Repeated charges accumulated stop listeners")
-			animation("93136435416899")
+			animation("101443662521580")
 			expect(#getconnections(stopped.Event) == 0, "Throw retained the hold-stop listener")
 		end
 		for index = 1, 20 do

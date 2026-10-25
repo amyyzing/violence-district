@@ -12,7 +12,8 @@ return function(factory)
 	local inputEvent = Instance.new("BindableEvent")
 	local characterRemoving = Instance.new("BindableEvent")
 	local character = Instance.new("Model")
-	local player = { Character = character, CharacterRemoving = characterRemoving.Event }
+	local configuredSkillKey = "Space"
+	local player = { Character = character, CharacterRemoving = characterRemoving.Event, GetAttribute = function() return configuredSkillKey end }
 	local nativeConnections, sources = {}, {}
 	local nativeKind, throwInput, advanceGoal = "generator", false, false
 	local unrelatedCalls, oldCharacterCalls = 0, 0
@@ -20,7 +21,9 @@ return function(factory)
 		local source = Instance.new("LocalScript") source.Name, source.Parent = name, owner
 		sources[#sources + 1] = source
 		local function handler(input, processed)
-			if processed or input.KeyCode ~= Enum.KeyCode.Space then return end
+			local mouse = configuredSkillKey == "MouseButton3"
+			local key = mouse and Enum.KeyCode.Unknown or (configuredSkillKey == "Space" and Enum.KeyCode.Space or Enum.KeyCode.Q)
+			if processed or input.KeyCode ~= key or (mouse and input.UserInputType ~= Enum.UserInputType.MouseButton3) then return end
 			if throwInput then error("fixture input unavailable") end
 			if owner ~= player.Character then oldCharacterCalls = oldCharacterCalls + 1 return end
 			if kind == "unrelated" then unrelatedCalls = unrelatedCalls + 1 return end
@@ -243,6 +246,14 @@ return function(factory)
 		feature.setEnabled(false) feature.setEnabled(true)
 		hit(recreated)
 		assert(presses == beforeFailure + 1, "Failed callback permanently consumed the check")
+		configuredSkillKey = "Q"
+		rotationCase({90,108},108)
+		configuredSkillKey = "MouseButton3"
+		rotationCase({90,108},108)
+		configuredSkillKey = "Space"
+		local trap = Instance.new("ImageLabel") trap.Name,trap.Visible,trap.Parent="TrapGoal",true,recreated
+		rotationCase({90,108},nil)
+		trap:Destroy()
 		-- Respawn invalidates callbacks from the previous character.
 		characterRemoving:Fire(character)
 		local replacementCharacter = Instance.new("Model")

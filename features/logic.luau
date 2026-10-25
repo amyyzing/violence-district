@@ -1,7 +1,7 @@
 local GLOBAL_KEY = "ViolenceDistrictLogic"
 local BASE_KEY = "ViolenceDistrictBaseUrl"
 local DEFAULT_BASE_URL = "https://raw.githubusercontent.com/amyyzing/violence-district/main/"
-local VERSION = 104
+local VERSION = 105
 
 local globalState = getgenv and getgenv() or _G
 local baseUrl = globalState and globalState[BASE_KEY] or DEFAULT_BASE_URL
@@ -80,11 +80,10 @@ local K = {
 	MAP_RESYNC_INTERVAL = 10,
 	PROJECTILE_FOLDER_NAME = "CateyesProjectileVisualiser",
 	PROJECTILE_GUI_NAME = "CateyesProjectilePower",
-	PROJECTILE_SPEED = 165,
-	PROJECTILE_MID_SPEED = 142.5,
-	PROJECTILE_CHARGE_SPEED = 150,
+	PROJECTILE_SPEED = 180,
+	PROJECTILE_MIN_CHARGE_TIME = 0.3,
 	PROJECTILE_FULL_CHARGE_TIME = 2,
-	PROJECTILE_GRAVITY_MULTIPLIER = 0.5,
+	PROJECTILE_GRAVITY = 98.1,
 	PROJECTILE_FLIGHT_TIME = 4,
 	PROJECTILE_ARC_STEPS = 160,
 	PROJECTILE_PREVIEW_TIME = 1.35,
@@ -92,11 +91,14 @@ local K = {
 	PROJECTILE_BEAM_ZINDEX = -1,
 	PROJECTILE_IMPACT_RADIUS = 0.25,
 	PROJECTILE_START_FORWARD = 3,
-	PROJECTILE_START_UP = 1.5,
 	PROJECTILE_TARGET_HL = "CateyesProjectileTargetHighlight",
 	PROJECTILE_TARGET_COLOR = Color3.fromRGB(255, 72, 112),
 	SPEAR_AIM_FOV_RADIUS = 120,
 	PROJECTILE_HOLD_ANIMATION_IDS = {
+		["77303734522729"] = true, -- Halloween Veil: startcharge
+		["87436543050891"] = true, -- Halloween Veil: chargeloop
+		["79809716042968"] = true, -- Halloween Veil: startpower
+		["122765810542358"] = true, -- Halloween Veil: powerloop
 		["92098503722633"] = true,
 		["84093948968516"] = true,
 		["138045669415653"] = true,
@@ -105,6 +107,8 @@ local K = {
 		["122986861455212"] = true,
 	},
 	PROJECTILE_THROW_ANIMATION_IDS = {
+		["101443662521580"] = true, -- Halloween Veil: spearthrow1
+		["127622545856523"] = true, -- Halloween Veil: spearthrow2
 		["93136435416899"] = true,
 		["86266790353635"] = true,
 		["124191224140066"] = true,
@@ -787,9 +791,19 @@ function Logic._projectileSpecialReady(playerGui)
 end
 
 function Logic._projectileLaunchSpeed(held, specialReady)
-	if held >= K.PROJECTILE_FULL_CHARGE_TIME and specialReady then return K.PROJECTILE_SPEED, true end
-	if held >= 1 then return K.PROJECTILE_MID_SPEED, false end
-	return math.max(held * K.PROJECTILE_CHARGE_SPEED, 1), false
+	-- Shared SpearMath.power; early release waits for MinimumChargeTime.
+	return math.clamp(math.max(held, K.PROJECTILE_MIN_CHARGE_TIME) * K.PROJECTILE_SPEED, 1, K.PROJECTILE_SPEED),
+		held >= K.PROJECTILE_FULL_CHARGE_TIME and specialReady == true
+end
+
+function Logic._projectileInputMatches(input)
+	-- KeybindsConfig maps basicattack to kb_basicattack / pad_basicattack.
+	local gamepad = input.UserInputType == Enum.UserInputType.Gamepad1
+	local binding = LP.GetAttribute and LP:GetAttribute(gamepad and "pad_basicattack" or "kb_basicattack")
+	if type(binding) ~= "string" or binding == "" then binding = gamepad and "ButtonR2" or "MouseButton1" end
+	if binding:match("^MouseButton[123]$") then return input.UserInputType == Enum.UserInputType[binding] end
+	local ok, key = pcall(function() return Enum.KeyCode[binding] end)
+	return ok and key ~= nil and input.KeyCode == key
 end
 
 local function projectilePowerState()
@@ -804,7 +818,7 @@ local function projectilePowerState()
 	end
 
 	if held >= 1 then
-		return "MID", K.PROJECTILE_MID_SPEED / K.PROJECTILE_SPEED, Color3.fromRGB(255, 178, 82), K.PROJECTILE_MID_SPEED
+		return "MID", 1, Color3.fromRGB(255, 178, 82), speed
 	end
 
 	return "LOW", math.clamp(speed / K.PROJECTILE_SPEED, 0, 1), Color3.fromRGB(126, 226, 255), speed
@@ -822,13 +836,14 @@ local function updateProjectilePowerIndicator(label, percent, color)
 end
 
 function Logic._projectileStartPosition(character)
+	local camera = workspace.CurrentCamera
+	if camera then
+		return camera.CFrame.Position + camera.CFrame.LookVector * K.PROJECTILE_START_FORWARD
+	end
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if root and root:IsA("BasePart") then
-		return root.Position + root.CFrame.LookVector * K.PROJECTILE_START_FORWARD + Vector3.new(0, K.PROJECTILE_START_UP, 0)
+		return root.Position + root.CFrame.LookVector * K.PROJECTILE_START_FORWARD
 	end
-
-	local camera = workspace.CurrentCamera
-	return camera and camera.CFrame.Position or nil
 end
 
 function Logic._projectileRaycastParams(character)
@@ -852,31 +867,16 @@ function Logic._projectileRaycastParams(character)
 	return params
 end
 
-local projectileSteps, projectileStepIndex, projectileStepSum, projectileStepSquares = {}, 0, 0, 0
-function Logic._recordProjectileStep(dt)
-	if dt <= 0 or dt > 0.25 then return end
-	projectileStepIndex = projectileStepIndex % 32 + 1
-	local old = projectileSteps[projectileStepIndex] or 0
-	projectileSteps[projectileStepIndex] = dt
-	projectileStepSum = projectileStepSum + dt - old
-	projectileStepSquares = projectileStepSquares + dt * dt - old * old
-end
-
-function Logic._projectileFrameStep(fallback)
-	-- Velocity-first integration adds a drop proportional to sum(dt^2), not just mean(dt).
-	return projectileStepSum > 0 and projectileStepSquares / projectileStepSum or (fallback or 1 / 60)
-end
-
-function Logic._spearIntercept(origin, target, targetVelocity, speed, gravity, frameStep, latency)
+function Logic._spearIntercept(origin, target, targetVelocity, speed, gravity, _frameStep, latency, spawnOffset)
 	if speed <= 0 then return nil end
 	local relative = target + targetVelocity * (latency or 0) - origin
-	local step = frameStep or 1 / 60
+	local offset = spawnOffset or 0
 	local function displacement(t)
-		return relative + targetVelocity * t + Vector3.new(0, 0.5 * gravity * t * (t + step), 0)
+		return relative + targetVelocity * t + Vector3.new(0, 0.5 * gravity * t * t, 0)
 	end
 	local function errorAt(t)
 		local delta = displacement(t)
-		return delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z - speed * speed * t * t
+		return delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z - (speed * t + offset) ^ 2
 	end
 	local function solve(before, after)
 		for _ = 1, 24 do
@@ -1002,7 +1002,7 @@ local function updateSpearAim(deltaTime)
 	if not spearAimTarget then return end
 	local root, torso, targetHumanoid = Logic._spearAimParts(spearAimTarget)
 	if not root then stopSpearAim() return end
-	local origin = Logic._projectileStartPosition(character)
+	local origin = camera.CFrame.Position
 	if not origin then return end
 	if projectileThrowHolding then local _, _, _, speed = projectilePowerState() spearAimSpeed = speed end
 	if not spearAimMotion or spearAimMotion.root ~= root then spearAimMotion = { root = root } end
@@ -1012,7 +1012,7 @@ local function updateSpearAim(deltaTime)
 	local ok, ping = pcall(function() return LP:GetNetworkPing() end)
 	local latency = ok and math.clamp(ping * 0.5, 0, 0.25) or 0
 	local direction, time, point = Logic._spearIntercept(origin, torso.Position, velocity, spearAimSpeed,
-		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, Logic._projectileFrameStep(deltaTime), latency)
+		K.PROJECTILE_GRAVITY, 0, latency, K.PROJECTILE_START_FORWARD)
 	Logic._spearAimDebug = { target = spearAimTarget, direction = direction, flightTime = time, point = point,
 		speed = spearAimSpeed, velocity = velocity }
 	if direction then
@@ -1175,15 +1175,14 @@ function Logic._projectileVisualOrigin(camera, fallback)
 	return fallback
 end
 
-function Logic._projectileTrajectory(origin, direction, speed, gravity, params, frameStep, piercing)
+function Logic._projectileTrajectory(origin, direction, speed, gravity, params, _frameStep, piercing)
 	local points = { origin }
 	local velocity = direction.Unit * speed
 	local previous = origin
-	local step = frameStep or 1 / 60
 	for index = 1, K.PROJECTILE_ARC_STEPS do
 		local t = K.PROJECTILE_FLIGHT_TIME * index / K.PROJECTILE_ARC_STEPS
-		-- ProjectileHandler updates velocity before position each Heartbeat.
-		local position = origin + velocity * t + Vector3.new(0, -0.5 * gravity * t * (t + step), 0)
+		-- Current shared SpearMath.position is analytic and independent of frame rate.
+		local position = origin + velocity * t + Vector3.new(0, -0.5 * gravity * t * t, 0)
 		local result, target = Logic._projectileSegmentRaycast(previous, position - previous, params, piercing)
 		table.insert(points, result and result.Position or position)
 		if result then return points, result, target end
@@ -1276,7 +1275,7 @@ local function updateProjectilePreview(deltaTime)
 	local powerLabel, powerPercent, powerColor, speed, piercing = projectilePowerState()
 	updateProjectilePowerIndicator(powerLabel, powerPercent, powerColor)
 	local points, result, characterModel = Logic._projectileTrajectory(startPosition, aimDirection, speed,
-		workspace.Gravity * K.PROJECTILE_GRAVITY_MULTIPLIER, params, Logic._projectileFrameStep(deltaTime), piercing)
+		K.PROJECTILE_GRAVITY, params, 0, piercing)
 	local beamColor = characterModel and K.PROJECTILE_TARGET_COLOR or powerColor
 	local impactColor = characterModel and K.PROJECTILE_TARGET_COLOR
 		or (result and Color3.fromRGB(255, 96, 72) or powerColor)
@@ -1622,7 +1621,6 @@ function Logic.start()
 	end
 
 	started = true
-	trackConnection(RunService.Heartbeat:Connect(Logic._recordProjectileStep))
 
 	for _, player in ipairs(Players:GetPlayers()) do
 		watchPlayer(player)
@@ -1641,7 +1639,7 @@ function Logic.start()
 			return
 		end
 
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if Logic._projectileInputMatches(input) then
 			if projectileWeaponActive() then
 				setProjectileHolding(true, nil)
 			end
@@ -1664,7 +1662,7 @@ function Logic.start()
 	end))
 
 	trackConnection(UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if Logic._projectileInputMatches(input) then
 			setProjectileHolding(false, nil)
 		end
 	end))

@@ -23,9 +23,9 @@ return function(capture)
 	params.FilterType = Enum.RaycastFilterType.Include
 	params.FilterDescendantsInstances = { fixtures }
 	local ok, err = pcall(function()
-		for _, case in ipairs({ { 0.25, true, 37.5, false }, { 0.99, true, 148.5, false },
-			{ 1, true, 142.5, false }, { 1.99, true, 142.5, false }, { 2, true, 165, true },
-			{ 2, false, 142.5, false }, { 7, false, 142.5, false } }) do
+		for _, case in ipairs({ { 0.25, true, 54, false }, { 0.99, true, 178.2, false },
+			{ 1, true, 180, false }, { 1.99, true, 180, false }, { 2, true, 180, true },
+			{ 2, false, 180, false }, { 7, false, 180, false } }) do
 			local speed, piercing = logic._projectileLaunchSpeed(case[1], case[2])
 			expect(math.abs(speed - case[3]) < 0.001 and piercing == case[4], "Charge/cooldown disagrees with Veil's throw script")
 		end
@@ -45,37 +45,16 @@ return function(capture)
 		icon.ImageColor3, hud.Enabled = Color3.new(1, 1, 1), false
 		expect(not logic._projectileSpecialReady(hudRoot), "Inactive ability HUD was used")
 		hudRoot:Destroy()
-		-- Paired camera/server directions from three live throws with little camera
-		-- movement. One additional capture turned quickly during replication delay.
-		local throws = {
-			{ 142.5, Vector3.new(0.951025, 0.140748, 0.275211), Vector3.new(0.950942, 0.141359, 0.275185) },
-			{ 142.5, Vector3.new(0.602200, -0.032178, -0.797697), Vector3.new(0.602182, -0.031733, -0.797728) },
-			{ 10.916162, Vector3.new(0.383826, -0.285727, 0.878087), Vector3.new(0.384176, -0.291230, 0.876124) },
-		}
-		for _, shot in ipairs(throws) do
-			local preview = logic._projectileTrajectory(origin, shot[2].Unit, shot[1], 98.1, params, 0.02)
-			local actual, velocity = origin, shot[3].Unit * shot[1]
-			for _ = 1, 200 do
-				velocity = velocity + Vector3.new(0, -98.1 * 0.02, 0)
-				actual = actual + velocity * 0.02
-			end
-			expect((preview[#preview] - actual).Magnitude < 1, "Recorded launch replay diverged by over one stud")
-		end
-		if capture then
-			local function xyz(v) return Vector3.new(v[1], v[2], v[3]) end
-			for _, flight in ipairs(capture.flights) do
-				local launch = capture.launches[flight.launchIndex]
-				local first, last, aim = xyz(flight.first), xyz(flight.last), xyz(launch.direction).Unit
-				local delta = first - xyz(launch.origin)
-				local age = (delta.X * aim.X + delta.Z * aim.Z) / (launch.speed * (aim.X * aim.X + aim.Z * aim.Z))
-				local gravity = capture.gravity * launch.gravityMultiplier
-				local velocity = aim * launch.speed + Vector3.new(0, -gravity * age, 0)
-				local curve = logic._projectileTrajectory(first, velocity.Unit, velocity.Magnitude, gravity, params, flight.dtSquaredSum / flight.seconds)
-				local step = 4 / (#curve - 1)
-				local index = math.floor(flight.seconds / step) + 1
-				local fraction = flight.seconds / step - (index - 1)
-				local shown = curve[index] + (curve[index + 1] - curve[index]) * fraction
-				expect((shown - last).Magnitude < 0.05, "Drawn arc is too flat against recorded flying-model positions")
+		local nativeMath = require(game.ReplicatedStorage.Modules.Killers.Veil.SpearMath)
+		for _, direction in ipairs({Vector3.new(0,0,-1), Vector3.new(0,-1,-1).Unit, Vector3.new(1,1,0).Unit}) do
+			for _, held in ipairs({0.3,0.7,1,3}) do
+				local speed = logic._projectileLaunchSpeed(held, false)
+				local curve = logic._projectileTrajectory(origin, direction, speed, 98.1, params)
+				for index, point in ipairs(curve) do
+					local time = (index-1)*4/(#curve-1)
+					expect((point-nativeMath.position(origin,direction*nativeMath.power(held),time)).Magnitude<0.002,
+						"Preview diverged from current native SpearMath")
+				end
 			end
 		end
 		local points, result = logic._projectileTrajectory(origin, Vector3.new(0, 0, -1), 165, 98.1, params, 0.02)
@@ -85,12 +64,13 @@ return function(capture)
 		expect((scaledDirection[#scaledDirection] - points[#points]).Magnitude < 0.001, "Direction magnitude changed the launch speed")
 		local simulated, velocity = origin, Vector3.new(0, 0, -165)
 		for _ = 1, 200 do
+			local before = velocity
 			velocity = velocity + Vector3.new(0, -98.1 * 0.02, 0)
-			simulated = simulated + velocity * 0.02
+			simulated = simulated + (before + velocity) * 0.01
 		end
-		expect((points[#points] - simulated).Magnitude < 0.1, "Trajectory disagrees with the game's velocity-first integration")
+		expect((points[#points] - simulated).Magnitude < 0.1, "Trajectory disagrees with independent midpoint integration")
 		local slowerFrames = logic._projectileTrajectory(origin, Vector3.new(0, 0, -1), 165, 98.1, params, 0.05)
-		expect(slowerFrames[#slowerFrames].Y < points[#points].Y, "Frame timing was ignored")
+		expect((slowerFrames[#slowerFrames]-points[#points]).Magnitude < 0.001, "Frame timing changed analytic flight")
 		local low = logic._projectileTrajectory(origin, Vector3.new(0, 0, -1), 50, 98.1, params)
 		expect(math.abs(low[#low].Z + 200) < 0.01, "Charge speed did not affect range")
 		local floor = part(fixtures, "Floor", origin - Vector3.new(0, 4, 0), Vector3.new(1000, 1, 1000))
@@ -154,7 +134,7 @@ return function(capture)
 		character.Parent = fixtures
 		local root = part(character, "HumanoidRootPart", origin, Vector3.one)
 		local release = logic._projectileStartPosition(character)
-		expect(release == root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 1.5, 0), "Release origin disagrees with game handler")
+		expect(release == workspace.CurrentCamera.CFrame.Position + workspace.CurrentCamera.CFrame.LookVector * 3, "Release origin disagrees with game handler")
 		local spear = Instance.new("Model")
 		spear.Name, spear.Parent = "Spear", camera
 		local muzzle = part(spear, "Hitbox", origin + Vector3.new(1, 1, 2), Vector3.one)

@@ -1,5 +1,36 @@
 # Cateyes
 
+## Halloween update compatibility (October 24, logic 105)
+
+The current live `Modules.Killers.Veil.SpearMath` replaces the older projectile
+model described in the historical audit notes below. Speed is clamped to
+`heldSeconds * 180`, capped at 180. The native release handler waits for at least
+0.3 seconds of charge. Flight uses fixed gravity `(0, -98.1, 0)` and the analytic
+position `origin + velocity*t + gravity*t*t/2`, independent of frame cadence.
+The spawn point is camera position plus camera look direction times 3. The
+intercept solver accounts for that direction-dependent offset. Piercing still
+requires a ready special and at least two seconds of charge; cooldown does not
+reduce a fully charged ordinary shot to the old 142.5 speed.
+
+The guide and auto-parry recognize the new Veil charge/throw and third-person
+melee animation assets read from the live character. The new parry-result
+character argument filters stale/foreign replies; cooldown reset messages do
+not consume a pending attempt. Native dagger readiness still handles silence,
+traps, health, cooldown, and other actions.
+
+Skill-check input discovery now recognizes the game's `KeybindsConfig.matches`
+callbacks and supplies the configured `kb_skillcheck` keyboard/mouse binding.
+Spear charge input respects `kb_basicattack` and `pad_basicattack`. Timing still
+uses the native callbacks and real needle angle; the helper does not bypass the
+new server validation. The shared prompt's visible `TrapGoal` is left to manual
+input until its separate trap handler/timing is validated.
+
+Generator `RepairProgress`, `HitBox`, and current labels were checked in Explorer
+and still match. New Butcher-specific cues, bot highlighting/targeting, and every
+killer's replaced animations have not all been validated in a live round.
+See [the current audit](docs/halloween-update-audit-2026-10-24.md).
+
+
 A compact interface for Violence District. Click a feature row once to toggle it.
 The small indicator rotates and lights up when enabled.
 Projectile preview and Spear aim are greyed out unless you are Veil on the Killer
@@ -46,7 +77,7 @@ Generator paths and the F hotkey have been removed.
 **Spear aim** starts off. Enable it with **J** or its row, then charge a Veil
 throw. It selects the standing survivor nearest the cursor on screen and keeps
 that target for the charge. The intercept uses the current charge speed,
-filtered movement velocity, half gravity, velocity-first integration, and an estimated
+filtered movement velocity, analytic gravity, camera-relative spawn offset, and an estimated
 one-way network delay. The camera follows the launch direction until 0.15 seconds
 after release; switching weapons, losing focus, or disabling the feature releases
 it immediately. The feature never throws or sends a weapon remote for you.
@@ -154,7 +185,7 @@ A subsequent four-minute Veil capture recorded seven launches. Medium/full
 speeds were 142.5/165, with gravity multiplier 0.5. Four flying-model traces fit
 velocity-first integration within 0.002 studs; moving-camera samples differed
 from launch directions by as much as 9 degrees. Capture data is stored in
-`scripts/fixtures/veil_2026_10_15.luau` and can be passed to the projectile test.
+`scripts/fixtures/veil_2026_10_15.luau` as historical evidence, not as current-game test expectations.
 Input durations and retained power-label text are observational and can include
 cooldown or post-release time; they do not prove a different charge threshold.
 

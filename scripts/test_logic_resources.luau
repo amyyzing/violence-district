@@ -38,7 +38,7 @@ return function(source, skillFactory, parryFactory)
 			end
 			logic.start()
 			logic.start()
-			expect(count(run.Heartbeat) == 1, "Repeated start added physics listeners")
+			expect(count(run.Heartbeat) == 0, "Idle logic retained an obsolete physics listener")
 			logic.setHighlightsEnabled(true) logic.setHighlightsEnabled(false)
 			logic.setSkillCheckEnabled(true) logic.setSkillCheckEnabled(false)
 			logic.setAutoParryEnabled(true) logic.setAutoParryEnabled(false)
@@ -56,7 +56,7 @@ return function(source, skillFactory, parryFactory)
 			logic.setSpearAimEnabled(false)
 			logic.setAutoParryEnabled(false)
 			player.Team.Name, dagger.Parent = "Survivors", character
-			expect(count(run.Heartbeat) == 1, "Disabled features retained a frame monitor")
+			expect(count(run.Heartbeat) == 0, "Disabled features retained a frame monitor")
 			local resync
 			for _, value in pairs(upvalues(logic.start)) do if type(value) == "thread" then resync = value end end
 			expect(resync ~= nil, "Map resync worker missing")

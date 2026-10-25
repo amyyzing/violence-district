@@ -116,6 +116,10 @@ return function(factory)
 	expect(calls == 1 and client.isParryResolving, "Entering 13 studs during wind-up did not activate native client")
 	expect(heartbeat:count() == 0, "Pending result retained a frame loop")
 	expect(math.abs(feature.getDiagnostics().pending.localMs - 20) < 0.00001, "Cue-to-call timing is incorrect")
+	reply:Fire(false, 60, false, false, {})
+	expect(feature.getDiagnostics().pending ~= nil, "Another character's parry result consumed the request")
+	reply:Fire(false, 0, false, true, player.Character)
+	expect(feature.getDiagnostics().pending ~= nil, "Cooldown reset consumed the request")
 	heartbeat:Fire()
 	expect(calls == 1, "Pending request repeated parry")
 	clock = clock + 0.12
@@ -247,6 +251,7 @@ return function(factory)
 		{ "Hidden", "113255068724446", "74968262036854" },
 		{ "Abysswalker", "118907603246885", "78432063483146" },
 		{ "Veil", "122812055447896", "78935059863801" },
+		{ "Halloween Veil", "84926129581106", "81963230963908" },
 		{ "Slasher", "110355011987939", "139369275981139" },
 		{ "Masked", "105374834496520", "111920872708571" },
 		{ "Cure candidate", "135002183282873", "121216847022485" },

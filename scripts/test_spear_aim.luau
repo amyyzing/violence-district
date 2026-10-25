@@ -99,8 +99,9 @@ return function(logic)
 		local position, velocity, elapsed = origin, direction * speed, 0
 		while elapsed < time do
 			local step = math.min(dt, time - elapsed)
+			local before = velocity
 			velocity = velocity + Vector3.new(0, -gravity * step, 0)
-			position = position + velocity * step
+			position = position + (before + velocity) * (0.5 * step)
 			elapsed = elapsed + step
 		end
 		expect((position - predicted).Magnitude < 0.02, "Simulated spear missed predicted moving target")
@@ -112,15 +113,20 @@ return function(logic)
 	local _, straightTime = logic._spearIntercept(origin, Vector3.new(0, 3, -60), Vector3.zero, 120, 0)
 	expect(math.abs(straightTime - 0.5) < 0.00001, "Zero-gravity intercept is incorrect")
 	local speed, gravity, dt = 165, 98.1, 1 / 60
-	local peakTime = (-3 * dt + math.sqrt(dt * dt + 32 * speed * speed / (gravity * gravity))) / 4
-	local range = math.sqrt(speed * speed * peakTime * peakTime - (0.5 * gravity * peakTime * (peakTime + dt)) ^ 2)
+	local range = speed * speed / gravity
 	local far = Vector3.new(0, 3, -(range - 0.0001))
 	local direction, time = logic._spearIntercept(origin, far, Vector3.zero, speed, gravity, dt)
 	expect(direction ~= nil, "Narrow valid intercept near maximum range was missed")
-	local hit = origin + direction * speed * time - Vector3.new(0, 0.5 * gravity * time * (time + dt), 0)
+	local hit = origin + direction * speed * time - Vector3.new(0, 0.5 * gravity * time * time, 0)
 	expect((hit - far).Magnitude < 0.0001, "Maximum-range solution did not meet the target")
 	expect(logic._spearIntercept(origin, Vector3.new(0, 3, -(range + 0.01)), Vector3.zero, speed, gravity, dt) == nil,
 		"Beyond-range target received a false intercept")
+	-- Spawn is offset along the solved camera direction, not the old direction.
+	local target, motion = Vector3.new(12, 6, -55), Vector3.new(13, 0, -4)
+	local aim, flight, predicted = logic._spearIntercept(origin, target, motion, 180, 98.1, 0, 0.05, 3)
+	expect(aim ~= nil, "Offset camera launch has no intercept")
+	local impact = origin + aim * (3 + 180 * flight) - Vector3.new(0, 49.05 * flight * flight, 0)
+	expect((impact - predicted).Magnitude < 0.0001, "Camera spawn offset introduced an aim miss")
 	if not Instance or not Vector2 then return string.format("PASS: %d intercept assertions", checks) end
 	local models = {}
 	local function player(x, team)

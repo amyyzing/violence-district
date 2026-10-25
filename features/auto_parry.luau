@@ -15,6 +15,7 @@ return function(context)
 	-- Replicated tracks may be named only "Animation". Match inspected attack assets too.
 	-- Asset names checked with Roblox metadata; see scripts/fixtures/killer_attack_assets_2026_10_18.json.
 	local holdIds = {
+		["84926129581106"] = true, -- Halloween Veil: inspected current Animations script
 		["117042998468241"] = true, -- Stalker: Stalker lunge
 		["129784271201071"] = true, -- Killer/Jeff: LungeHold-jeff
 		["113255068724446"] = true, -- Hidden: Hiddenlungehold
@@ -25,6 +26,7 @@ return function(context)
 		["135002183282873"] = true, -- Cure: lungehold, confirmed in live character script
 	}
 	local attackIds = {
+		["81963230963908"] = true, -- Halloween Veil: observed and inspected current melee swing
 		["133963973694098"] = true, -- Stalker: Attack Stalker
 		["132817836308238"] = true, -- Killer/Jeff: Attack-jeff
 		["74968262036854"] = true, -- Hidden: HiddenAttack
@@ -138,7 +140,9 @@ return function(context)
 		if not stepConnection then stepConnection = context.runService.Heartbeat:Connect(feature._step) end
 		feature._step()
 	end
-	function feature._result(success, cooldown)
+	function feature._result(success, cooldown, _permanent, reset, character)
+		-- Current results identify their character; cooldown resets are not replies.
+		if (character and character ~= player.Character) or reset == true then return end
 		if not pending or not pending.callAt then return end
 		local sample = pending
 		pending = nil

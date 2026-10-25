@@ -97,14 +97,16 @@ return function(c)
 			if typeof(source) ~= "Instance" or source.Parent ~= character or source.Disabled
 				or (source.Name ~= "Skillcheck-gen" and source.Name ~= "Skillcheck-player") then return end
 			local read, constants = pcall(getConstants, callback)
-			local space, keyCode = false, false
+			local space, keyCode, skillcheck, matches = false, false, false, false
 			if read then
 				for _, value in pairs(constants) do
 					space = space or value == "Space"
 					keyCode = keyCode or value == "KeyCode"
+					skillcheck = skillcheck or value == "skillcheck"
+					matches = matches or value == "matches"
 				end
 			end
-			if space and keyCode then
+			if (space and keyCode) or (skillcheck and matches) then
 				seen[callback] = true
 				nativeInputs[#nativeInputs + 1] = { connection = connection, callback = callback, source = source }
 			end
@@ -124,7 +126,12 @@ return function(c)
 	local function sendSkillInput()
 		if not c.player or nativeCharacter ~= c.player.Character or #nativeInputs == 0 then refreshNativeInputs() end
 		local sent, failure = false, "Native skill-check callback unavailable"
-		local input = { KeyCode = Enum.KeyCode.Space, UserInputType = Enum.UserInputType.Keyboard,
+		local binding = c.player and c.player.GetAttribute and c.player:GetAttribute("kb_skillcheck")
+		if type(binding) ~= "string" or binding == "" then binding = "Space" end
+		local mouse = binding:match("^MouseButton[123]$") ~= nil
+		local ok, keyCode = pcall(function() return mouse and Enum.KeyCode.Unknown or Enum.KeyCode[binding] end)
+		if not ok or keyCode == nil then return false end
+		local input = { KeyCode = keyCode, UserInputType = mouse and Enum.UserInputType[binding] or Enum.UserInputType.Keyboard,
 			UserInputState = Enum.UserInputState.Begin }
 		for _, entry in ipairs(nativeInputs) do
 			if (not entry.connection or (entry.connection.Connected ~= false and entry.connection.Enabled ~= false))
@@ -180,6 +187,10 @@ return function(c)
 				stopWatching()
 				return
 			end
+			-- Butcher traps share this prompt but have a different scoring window.
+			-- Leave those inputs to the player until their native timing is inspected.
+			local trapGoal = boundCheck:FindFirstChild("TrapGoal")
+			if trapGoal and trapGoal.Visible then return end
 
 			-- Generator/healing scripts compare absolute angles, including Scourge's
 			-- continuous rotations. Wrapping can turn a missed zone into a success.
